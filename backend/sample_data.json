@@ -1,0 +1,47 @@
+[
+  {
+    "id": 1,
+    "name": "Alice Johnson",
+    "email": "alice@example.com",
+    "age": 28,
+    "department": "Engineering",
+    "salary": 85000,
+    "start_date": "2021-03-15"
+  },
+  {
+    "id": 2,
+    "name": "Bob Smith",
+    "email": "bob@example.com",
+    "age": 35,
+    "department": "Marketing",
+    "salary": 72000,
+    "start_date": "2020-07-22"
+  },
+  {
+    "id": 3,
+    "name": "Carol Davis",
+    "email": "carol@example.com",
+    "age": 31,
+    "department": "Engineering",
+    "salary": 92000,
+    "start_date": "2019-11-08"
+  },
+  {
+    "id": 4,
+    "name": "David Wilson",
+    "email": "david@example.com",
+    "age": 42,
+    "department": "Sales",
+    "salary": 68000,
+    "start_date": "2018-05-12"
+  },
+  {
+    "id": 5,
+    "name": "Eva Brown",
+    "email": "eva@example.com",
+    "age": 29,
+    "department": "Engineering",
+    "salary": 89000,
+    "start_date": "2022-01-20"
+  }
+]
