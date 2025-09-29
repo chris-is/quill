@@ -109,24 +109,40 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
             className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
           >
             {/* Widget Header */}
-            <div className="flex items-center justify-between p-3 border-b border-gray-200 bg-gray-50">
+            <div className="flex items-center justify-between p-3 border-b border-gray-200 bg-gray-50 react-grid-no-drag">
               <div className="flex items-center space-x-2">
                 {getWidgetIcon(widget.type, widget.chartType)}
                 <h3 className="text-sm font-medium text-gray-700 truncate">
                   {widget.title}
                 </h3>
               </div>
-              <div className="flex items-center space-x-1">
+              <div className="flex items-center space-x-1 react-grid-no-drag">
                 <button
-                  onClick={() => refreshWidget(widget.id)}
-                  className="text-gray-400 hover:text-blue-500 transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    refreshWidget(widget.id);
+                  }}
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                  }}
+                  className="text-gray-400 hover:text-blue-500 transition-colors p-1"
                   title="Refresh data"
                 >
                   <RefreshCw className="w-4 h-4" />
                 </button>
                 <button
-                  onClick={() => removeWidget(widget.id)}
-                  className="text-gray-400 hover:text-red-500 transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    removeWidget(widget.id);
+                  }}
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                  }}
+                  className="text-gray-400 hover:text-red-500 transition-colors p-1"
                   title="Remove widget"
                 >
                   <X className="w-4 h-4" />
