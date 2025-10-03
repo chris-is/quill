@@ -3,6 +3,7 @@ import { DuckDBProvider, useDuckDB } from './lib/DuckDBContext';
 import { FileUpload } from './components/FileUpload';
 import { DashboardGrid, Widget } from './components/DashboardGrid';
 import { SQLQueryInterface } from './components/SQLQueryInterface';
+import { MyChart } from './components/WidgetModel';
 import { Database, Upload, Code } from 'lucide-react';
 import './App.css';
 
@@ -206,12 +207,20 @@ const AppContent: React.FC = () => {
             )}
           </div>
         ) : currentView === 'dashboard' ? (
+          <div>
+            {/* <div className="max-w-7xl mx-auto py-8 px-4">
+              <div className="bg-white p-6 rounded-lg shadow mb-6">
+                <h3 className="text-lg font-semibold mb-4">MyChart Preview</h3>
+                <MyChart />
+              </div>
+            </div> */}
           <DashboardGrid
             widgets={widgets}
             onWidgetUpdate={setWidgets}
             onAddWidget={handleAddWidget}
             onRefreshWidget={refreshWidgetData}
-          />
+          />            
+          </div>
         ) : (
           <SQLQueryInterface />
         )}
