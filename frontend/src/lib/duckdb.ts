@@ -87,7 +87,9 @@ export class DuckDBService {
     }
 
     const result = await this.conn.query("SHOW TABLES");
-    return result.toArray().map(row => row.get(0) as string);
+    const rows = result.toArray().map(row => row.toJSON());
+    // SHOW TABLES returns objects with 'name' property
+    return rows.map(row => row.name as string);
   }
 
   async getTableSchema(tableName: string): Promise<any[]> {
@@ -96,14 +98,7 @@ export class DuckDBService {
     }
 
     const result = await this.conn.query(`DESCRIBE ${tableName}`);
-    return result.toArray().map(row => ({
-      column_name: row.get(0),
-      column_type: row.get(1),
-      null: row.get(2),
-      key: row.get(3),
-      default: row.get(4),
-      extra: row.get(5),
-    }));
+    return result.toArray().map(row => row.toJSON());
   }
 
   async close(): Promise<void> {

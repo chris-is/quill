@@ -1,6 +1,16 @@
 import React, { useState, useCallback } from 'react';
 import { Responsive, WidthProvider, Layout } from 'react-grid-layout';
 import { Plus, X, BarChart3, Table as TableIcon, PieChart, RefreshCw } from 'lucide-react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TablePagination,
+  Paper,
+} from '@mui/material';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 
@@ -181,6 +191,9 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
 
 // Placeholder widget content component
 const WidgetContent: React.FC<{ widget: Widget }> = ({ widget }) => {
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
   if (!widget.data || widget.data.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-gray-400">
@@ -194,31 +207,82 @@ const WidgetContent: React.FC<{ widget: Widget }> = ({ widget }) => {
   }
 
   if (widget.type === 'table') {
+    // Calculate paginated data
+    const paginatedData = widget.data.slice(
+      page * rowsPerPage,
+      page * rowsPerPage + rowsPerPage
+    );
+
+    // Pagination event handlers
+    const handleChangePage = (event: unknown, newPage: number) => {
+      setPage(newPage);
+    };
+
+    const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      const newValue = parseInt(event.target.value, 10);
+      setRowsPerPage(newValue);
+      setPage(0); // Go back to the first page to avoid confusion
+    };
+
     return (
-      <div className="overflow-auto h-full">
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="border-b">
+      <TableContainer
+        component={Paper}
+        sx={{
+          height: '100%',
+          boxShadow: 'none',
+          backgroundColor: 'transparent',
+        }}
+      >
+        <Table size="small" stickyHeader sx={{ minWidth: 300 }}>
+          <TableHead>
+            <TableRow>
               {Object.keys(widget.data[0] || {}).map((key) => (
-                <th key={key} className="text-left p-1 font-medium text-gray-600">
+                <TableCell
+                  key={key}
+                  sx={{
+                    fontWeight: 'bold',
+                    color: 'text.secondary',
+                    padding: '8px',
+                  }}
+                >
                   {key}
-                </th>
+                </TableCell>
               ))}
-            </tr>
-          </thead>
-          <tbody>
-            {widget.data.slice(0, 10).map((row, index) => (
-              <tr key={index} className="border-b border-gray-100">
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {paginatedData.map((row, index) => (
+              <TableRow
+                key={index}
+                sx={{
+                  '&:hover': { backgroundColor: 'action.hover' },
+                }}
+              >
                 {Object.values(row).map((value, cellIndex) => (
-                  <td key={cellIndex} className="p-1 text-gray-700">
+                  <TableCell
+                    key={cellIndex}
+                    sx={{
+                      color: 'text.primary',
+                      padding: '8px',
+                    }}
+                  >
                     {String(value)}
-                  </td>
+                  </TableCell>
                 ))}
-              </tr>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </TableBody>
+        </Table>
+        <TablePagination
+          rowsPerPageOptions={[10, 25, 50, 100]}
+          component="div"
+          count={widget.data.length}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={handleChangePage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+        />
+      </TableContainer>
     );
   }
 
