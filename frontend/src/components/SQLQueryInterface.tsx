@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Play,
   Download,
@@ -9,6 +9,7 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { Drawer, Button, Portal } from "@chakra-ui/react";
+import { SqlMonacoEditor } from "@sqlrooms/sql-editor";
 
 import { useDuckDB } from "../lib/DuckDBContext";
 
@@ -38,7 +39,6 @@ export const SQLQueryInterface: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [queryHistory, setQueryHistory] = useState<QueryHistory[]>([]);
   const [showHistory, setShowHistory] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const { query, tables, isInitialized } = useDuckDB();
 
@@ -55,8 +55,9 @@ export const SQLQueryInterface: React.FC = () => {
     ].filter(Boolean);
   };
 
-  const executeQuery = async () => {
-    if (!currentQuery.trim() || !isInitialized) return;
+  const executeQuery = async (queryText?: string) => {
+    const queryToExecute = queryText ?? currentQuery;
+    if (!queryToExecute.trim() || !isInitialized) return;
 
     setIsExecuting(true);
     setError(null);
@@ -64,7 +65,7 @@ export const SQLQueryInterface: React.FC = () => {
     const startTime = Date.now();
 
     try {
-      const queryData = await query(currentQuery.trim());
+      const queryData = await query(queryToExecute.trim());
       const executionTime = Date.now() - startTime;
 
       // Extract column names from first row
@@ -75,7 +76,7 @@ export const SQLQueryInterface: React.FC = () => {
         columns,
         rowCount: queryData.length,
         executionTime,
-        query: currentQuery.trim(),
+        query: queryToExecute.trim(),
         timestamp: new Date(),
       };
 
@@ -84,7 +85,7 @@ export const SQLQueryInterface: React.FC = () => {
       // Add to history
       const historyEntry: QueryHistory = {
         id: `query-${Date.now()}`,
-        query: currentQuery.trim(),
+        query: queryToExecute.trim(),
         timestamp: new Date(),
         success: true,
         rowCount: queryData.length,
@@ -100,7 +101,7 @@ export const SQLQueryInterface: React.FC = () => {
       // Add failed query to history
       const historyEntry: QueryHistory = {
         id: `query-${Date.now()}`,
-        query: currentQuery.trim(),
+        query: queryToExecute.trim(),
         timestamp: new Date(),
         success: false,
         error: errorMessage,
@@ -109,13 +110,6 @@ export const SQLQueryInterface: React.FC = () => {
       setQueryHistory((prev) => [historyEntry, ...prev.slice(0, 19)]);
     } finally {
       setIsExecuting(false);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-      e.preventDefault();
-      executeQuery();
     }
   };
 
@@ -263,8 +257,7 @@ export const SQLQueryInterface: React.FC = () => {
               </div>
             </div>
           )}
-
-          {/* Query Editor */}
+          {/* Query Editor with Monaco */}
           <div className="bg-white border-b border-gray-200 p-4">
             <div className="flex items-center justify-between mb-2">
               <label className="text-sm font-medium text-gray-700">
@@ -284,15 +277,24 @@ export const SQLQueryInterface: React.FC = () => {
               </div>
             </div>
 
-            <div className="relative">
-              <textarea
-                ref={textareaRef}
+            <div className="relative border border-gray-300 rounded-md overflow-hidden">
+              <SqlMonacoEditor
                 value={currentQuery}
-                onChange={(e) => setCurrentQuery(e.target.value)}
-                onKeyDown={handleKeyDown}
-                className="w-full h-32 p-3 border border-gray-300 rounded-md font-mono text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Enter your SQL query here..."
-                disabled={!isInitialized}
+                onChange={(value) => setCurrentQuery(value ?? "")}
+                height="300px"
+                onMount={(editor, monaco) => {
+                  // Register Ctrl+Enter keyboard shortcut to execute query
+                  editor.addAction({
+                    id: "execute-query",
+                    label: "Execute Query",
+                    keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter],
+                    run: (ed) => {
+                      // Get the current editor value to avoid stale closure
+                      const currentEditorValue = ed.getValue();
+                      executeQuery(currentEditorValue);
+                    },
+                  });
+                }}
               />
             </div>
 
@@ -304,7 +306,7 @@ export const SQLQueryInterface: React.FC = () => {
               </div>
 
               <button
-                onClick={executeQuery}
+                onClick={() => executeQuery()}
                 disabled={!currentQuery.trim() || isExecuting || !isInitialized}
                 className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
               >
@@ -401,13 +403,13 @@ export const SQLQueryInterface: React.FC = () => {
             )}
 
             {!results && !error && !isExecuting && (
-              <div className="flex items-center justify-center h-full text-gray-500">
+              <div className="py-3 flex items-center justify-center h-full text-gray-500">
                 <div className="text-center">
                   <Database className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                   <p className="text-lg font-medium mb-2">
                     Ready to query your data
                   </p>
-                  <p className="text-sm">
+                  <p className="py-3 text-sm">
                     Write a SQL query and press Execute or Ctrl+Enter
                   </p>
                 </div>

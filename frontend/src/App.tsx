@@ -1,14 +1,17 @@
-import React, { useState } from 'react';
-import { DuckDBProvider, useDuckDB } from './lib/DuckDBContext';
-import { FileUpload } from './components/FileUpload';
-import { DashboardGrid, Widget } from './components/DashboardGrid';
-import { SQLQueryInterface } from './components/SQLQueryInterface';
-import { MyChart } from './components/WidgetModel';
-import { Database, Upload, Code } from 'lucide-react';
-import './App.css';
+import React, { useState, useEffect } from "react";
+import { DuckDBProvider, useDuckDB } from "./lib/DuckDBContext";
+import { FileUpload } from "./components/FileUpload";
+import { DashboardGrid, Widget } from "./components/DashboardGrid";
+import { SQLQueryInterface } from "./components/SQLQueryInterface";
+import { MyChart } from "./components/WidgetModel";
+import { Database, Upload, Code } from "lucide-react";
+import { initializeMonaco } from "./lib/monacoConfig";
+import "./App.css";
 
 const AppContent: React.FC = () => {
-  const [currentView, setCurrentView] = useState<'upload' | 'dashboard' | 'sql'>('upload');
+  const [currentView, setCurrentView] = useState<
+    "upload" | "dashboard" | "sql"
+  >("upload");
   const [widgets, setWidgets] = useState<Widget[]>([]);
   const { isInitialized, isLoading, error, tables, query } = useDuckDB();
 
@@ -22,32 +25,38 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const createAndExecuteWidget = async (widgetConfig: Omit<Widget, 'data'>): Promise<void> => {
+  const createAndExecuteWidget = async (
+    widgetConfig: Omit<Widget, "data">
+  ): Promise<void> => {
     const widget: Widget = { ...widgetConfig, data: [] };
 
     // Add widget immediately for responsive UI
-    setWidgets(prev => [...prev, widget]);
+    setWidgets((prev) => [...prev, widget]);
 
     // Execute query and update with data
     const widgetWithData = await executeWidgetQuery(widget);
-    setWidgets(prev => prev.map(w => w.id === widget.id ? widgetWithData : w));
+    setWidgets((prev) =>
+      prev.map((w) => (w.id === widget.id ? widgetWithData : w))
+    );
   };
 
   const refreshWidgetData = async (widgetId: string): Promise<void> => {
-    const widget = widgets.find(w => w.id === widgetId);
+    const widget = widgets.find((w) => w.id === widgetId);
     if (!widget) return;
 
     const updatedWidget = await executeWidgetQuery(widget);
-    setWidgets(prev => prev.map(w => w.id === widgetId ? updatedWidget : w));
+    setWidgets((prev) =>
+      prev.map((w) => (w.id === widgetId ? updatedWidget : w))
+    );
   };
 
   const handleDataLoaded = async (tableName: string) => {
     // Switch to dashboard view and add a default table widget
-    setCurrentView('dashboard');
+    setCurrentView("dashboard");
 
     await createAndExecuteWidget({
       id: `widget-${Date.now()}`,
-      type: 'table',
+      type: "table",
       title: `Table: ${tableName}`,
       query: `SELECT * FROM ${tableName} LIMIT 100`,
     });
@@ -55,7 +64,7 @@ const AppContent: React.FC = () => {
 
   const handleAddWidget = async () => {
     if (tables.length === 0) {
-      alert('Please upload some data first');
+      alert("Please upload some data first");
       return;
     }
 
@@ -63,7 +72,7 @@ const AppContent: React.FC = () => {
 
     await createAndExecuteWidget({
       id: `widget-${Date.now()}`,
-      type: 'table',
+      type: "table",
       title: `New Widget`,
       query: `SELECT * FROM ${tableName} LIMIT 10`,
     });
@@ -115,33 +124,33 @@ const AppContent: React.FC = () => {
 
             <div className="flex items-center space-x-4">
               <button
-                onClick={() => setCurrentView('upload')}
+                onClick={() => setCurrentView("upload")}
                 className={`px-3 py-2 rounded-md text-sm font-medium ${
-                  currentView === 'upload'
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'text-gray-500 hover:text-gray-700'
+                  currentView === "upload"
+                    ? "bg-blue-100 text-blue-700"
+                    : "text-gray-500 hover:text-gray-700"
                 }`}
               >
                 <Upload className="w-4 h-4 inline mr-2" />
                 Upload
               </button>
               <button
-                onClick={() => setCurrentView('dashboard')}
+                onClick={() => setCurrentView("dashboard")}
                 className={`px-3 py-2 rounded-md text-sm font-medium ${
-                  currentView === 'dashboard'
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'text-gray-500 hover:text-gray-700'
+                  currentView === "dashboard"
+                    ? "bg-blue-100 text-blue-700"
+                    : "text-gray-500 hover:text-gray-700"
                 }`}
               >
                 <Database className="w-4 h-4 inline mr-2" />
                 Dashboard
               </button>
               <button
-                onClick={() => setCurrentView('sql')}
+                onClick={() => setCurrentView("sql")}
                 className={`px-3 py-2 rounded-md text-sm font-medium ${
-                  currentView === 'sql'
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'text-gray-500 hover:text-gray-700'
+                  currentView === "sql"
+                    ? "bg-blue-100 text-blue-700"
+                    : "text-gray-500 hover:text-gray-700"
                 }`}
               >
                 <Code className="w-4 h-4 inline mr-2" />
@@ -150,7 +159,7 @@ const AppContent: React.FC = () => {
 
               {tables.length > 0 && (
                 <div className="text-sm text-gray-500">
-                  {tables.length} table{tables.length !== 1 ? 's' : ''} loaded
+                  {tables.length} table{tables.length !== 1 ? "s" : ""} loaded
                 </div>
               )}
             </div>
@@ -160,15 +169,15 @@ const AppContent: React.FC = () => {
 
       {/* Main Content */}
       <main className="flex-1 h-screen">
-        {currentView === 'upload' ? (
+        {currentView === "upload" ? (
           <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
               <h2 className="text-3xl font-bold text-gray-900 mb-4">
                 Welcome to Quill
               </h2>
               <p className="text-lg text-gray-600 max-w-3xl mx-auto">
-                Upload your CSV or JSON files and create interactive dashboards with
-                lightning-fast queries powered by DuckDB WebAssembly.
+                Upload your CSV or JSON files and create interactive dashboards
+                with lightning-fast queries powered by DuckDB WebAssembly.
               </p>
             </div>
 
@@ -177,7 +186,8 @@ const AppContent: React.FC = () => {
             {tables.length > 0 && (
               <div className="mt-8 text-center">
                 <p className="text-sm text-gray-600 mb-4">
-                  Great! You have {tables.length} table{tables.length !== 1 ? 's' : ''} loaded:
+                  Great! You have {tables.length} table
+                  {tables.length !== 1 ? "s" : ""} loaded:
                 </p>
                 <div className="flex flex-wrap justify-center gap-2">
                   {tables.map((table) => (
@@ -191,13 +201,13 @@ const AppContent: React.FC = () => {
                 </div>
                 <div className="flex justify-center space-x-4 mt-4">
                   <button
-                    onClick={() => setCurrentView('dashboard')}
+                    onClick={() => setCurrentView("dashboard")}
                     className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                   >
                     Go to Dashboard
                   </button>
                   <button
-                    onClick={() => setCurrentView('sql')}
+                    onClick={() => setCurrentView("sql")}
                     className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
                   >
                     Query with SQL
@@ -206,7 +216,7 @@ const AppContent: React.FC = () => {
               </div>
             )}
           </div>
-        ) : currentView === 'dashboard' ? (
+        ) : currentView === "dashboard" ? (
           <div>
             {/* <div className="max-w-7xl mx-auto py-8 px-4">
               <div className="bg-white p-6 rounded-lg shadow mb-6">
@@ -214,12 +224,12 @@ const AppContent: React.FC = () => {
                 <MyChart />
               </div>
             </div> */}
-          <DashboardGrid
-            widgets={widgets}
-            onWidgetUpdate={setWidgets}
-            onAddWidget={handleAddWidget}
-            onRefreshWidget={refreshWidgetData}
-          />            
+            <DashboardGrid
+              widgets={widgets}
+              onWidgetUpdate={setWidgets}
+              onAddWidget={handleAddWidget}
+              onRefreshWidget={refreshWidgetData}
+            />
           </div>
         ) : (
           <SQLQueryInterface />
@@ -230,6 +240,11 @@ const AppContent: React.FC = () => {
 };
 
 const App: React.FC = () => {
+  // Initialize Monaco Editor on app startup
+  useEffect(() => {
+    initializeMonaco();
+  }, []);
+
   return (
     <DuckDBProvider>
       <AppContent />
