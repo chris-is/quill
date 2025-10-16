@@ -8,7 +8,7 @@ import {
   AlertCircle,
   CheckCircle,
 } from "lucide-react";
-import { Drawer, Button, Portal } from "@chakra-ui/react";
+import { Drawer, Button, Portal, CloseButton } from "@chakra-ui/react";
 import { SqlMonacoEditor } from "@sqlrooms/sql-editor";
 
 import { useDuckDB } from "../lib/DuckDBContext";
@@ -229,6 +229,21 @@ export const SQLQueryInterface: React.FC = () => {
                         )}
                       </div>
                     </Drawer.Body>
+                    <Drawer.Footer gap="3" px="2" py="2">
+                      <Drawer.ActionTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="md"
+                          width="1/3"
+                          onClick={() => setQueryHistory([])}
+                        >
+                          Clear
+                        </Button>
+                      </Drawer.ActionTrigger>
+                    </Drawer.Footer>
+                    <Drawer.CloseTrigger asChild>
+                      <CloseButton size="sm" />
+                    </Drawer.CloseTrigger>
                   </Drawer.Content>
                 </Drawer.Positioner>
               </Portal>

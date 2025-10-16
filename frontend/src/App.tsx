@@ -4,6 +4,7 @@ import { FileUpload } from "./components/FileUpload";
 import { DashboardGrid, Widget } from "./components/DashboardGrid";
 import { SQLQueryInterface } from "./components/SQLQueryInterface";
 import { MyChart } from "./components/WidgetModel";
+import WidgetConfigModal from "./components/WidgetConfigModal";
 import { Database, Upload, Code } from "lucide-react";
 import { initializeMonaco } from "./lib/monacoConfig";
 import "./App.css";
@@ -13,6 +14,7 @@ const AppContent: React.FC = () => {
     "upload" | "dashboard" | "sql"
   >("upload");
   const [widgets, setWidgets] = useState<Widget[]>([]);
+  const [isWidgetModalOpen, setIsWidgetModalOpen] = useState(false);
   const { isInitialized, isLoading, error, tables, query } = useDuckDB();
 
   const executeWidgetQuery = async (widget: Widget): Promise<Widget> => {
@@ -62,20 +64,38 @@ const AppContent: React.FC = () => {
     });
   };
 
-  const handleAddWidget = async () => {
+  const handleAddWidget = () => {
     if (tables.length === 0) {
       alert("Please upload some data first");
       return;
     }
+    setIsWidgetModalOpen(true);
+  };
 
-    const tableName = tables[0]; // Use first available table for now
+  const handleCreateWidgetFromModal = async (config: any) => {
+    // For now, create basic widgets. Step 3 (CONFIGURE) will provide complete config
+    const tableName = config.dataSource || tables[0];
+
+    let query = config.query;
+    // If no query provided (during Step 3 implementation), generate default
+    if (!query) {
+      if (config.type === "table") {
+        query = `SELECT * FROM ${tableName} LIMIT 100`;
+      } else if (config.type === "chart") {
+        query = `SELECT * FROM ${tableName} LIMIT 50`;
+      }
+    }
 
     await createAndExecuteWidget({
       id: `widget-${Date.now()}`,
-      type: "table",
-      title: `New Widget`,
-      query: `SELECT * FROM ${tableName} LIMIT 10`,
+      type: config.type,
+      title: config.title,
+      query: query,
+      chartType: config.chartType,
+      config: config.config,
     });
+
+    setIsWidgetModalOpen(false);
   };
 
   if (!isInitialized && isLoading) {
@@ -218,12 +238,7 @@ const AppContent: React.FC = () => {
           </div>
         ) : currentView === "dashboard" ? (
           <div>
-            {/* <div className="max-w-7xl mx-auto py-8 px-4">
-              <div className="bg-white p-6 rounded-lg shadow mb-6">
-                <h3 className="text-lg font-semibold mb-4">MyChart Preview</h3>
-                <MyChart />
-              </div>
-            </div> */}
+            {/* Dynamic Dashboard Grid */}
             <DashboardGrid
               widgets={widgets}
               onWidgetUpdate={setWidgets}
@@ -235,6 +250,15 @@ const AppContent: React.FC = () => {
           <SQLQueryInterface />
         )}
       </main>
+
+      {/* Widget Configuration Modal */}
+      <WidgetConfigModal
+        isOpen={isWidgetModalOpen}
+        onClose={() => setIsWidgetModalOpen(false)}
+        tables={tables}
+        onCreateWidget={handleCreateWidgetFromModal}
+        queryFunction={query}
+      />
     </div>
   );
 };
