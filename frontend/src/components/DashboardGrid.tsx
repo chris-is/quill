@@ -23,6 +23,12 @@ export interface Widget {
   query: string;
   chartType?: 'bar' | 'line' | 'pie' | 'area';
   data?: any[];
+  config?: {
+    xKey?: string;
+    yKey?: string;
+    seriesName?: string;
+    color?: string;
+  };
 }
 
 interface DashboardGridProps {
