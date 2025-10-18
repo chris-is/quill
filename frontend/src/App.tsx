@@ -4,7 +4,7 @@ import { FileUpload } from "./components/FileUpload";
 import { DashboardGrid, Widget } from "./components/DashboardGrid";
 import { SQLQueryInterface } from "./components/SQLQueryInterface";
 import { MyChart } from "./components/WidgetModel";
-import WidgetConfigModal from "./components/WidgetConfigModal";
+import WidgetConfigModal, { WidgetConfig } from "./components/WidgetConfigModal";
 import { Database, Upload, Code } from "lucide-react";
 import { initializeMonaco } from "./lib/monacoConfig";
 import "./App.css";
@@ -60,7 +60,11 @@ const AppContent: React.FC = () => {
       id: `widget-${Date.now()}`,
       type: "table",
       title: `Table: ${tableName}`,
-      query: `SELECT * FROM ${tableName} LIMIT 100`,
+      tableName: tableName,
+      query: `SELECT * FROM ${tableName}`,
+      config: {
+        columns: [],
+      },
     });
   };
 
@@ -72,27 +76,28 @@ const AppContent: React.FC = () => {
     setIsWidgetModalOpen(true);
   };
 
-  const handleCreateWidgetFromModal = async (config: any) => {
+  const handleCreateWidgetFromModal = async (widgetConfig: WidgetConfig) => {
     // For now, create basic widgets. Step 3 (CONFIGURE) will provide complete config
-    const tableName = config.dataSource || tables[0];
+    const tableName = widgetConfig.tableName || tables[0];
 
-    let query = config.query;
+    let query = widgetConfig.query;
     // If no query provided (during Step 3 implementation), generate default
     if (!query) {
-      if (config.type === "table") {
-        query = `SELECT * FROM ${tableName} LIMIT 100`;
-      } else if (config.type === "chart") {
-        query = `SELECT * FROM ${tableName} LIMIT 50`;
+      if (widgetConfig.type === "table") {
+        query = `SELECT * FROM ${tableName}`;
+      } else if (widgetConfig.type === "chart") {
+        query = `SELECT * FROM ${tableName}`;
       }
     }
 
     await createAndExecuteWidget({
       id: `widget-${Date.now()}`,
-      type: config.type,
-      title: config.title,
+      type: widgetConfig.type,
+      title: widgetConfig.title,
+      tableName: tableName,
       query: query,
-      chartType: config.chartType,
-      config: config.config,
+      chartType: widgetConfig.chartType,
+      config: widgetConfig.config || {},
     });
 
     setIsWidgetModalOpen(false);

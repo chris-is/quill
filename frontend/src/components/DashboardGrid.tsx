@@ -1,6 +1,13 @@
-import React, { useState, useCallback } from 'react';
-import { Responsive, WidthProvider, Layout } from 'react-grid-layout';
-import { Plus, X, BarChart3, Table as TableIcon, PieChart, RefreshCw } from 'lucide-react';
+import React, { useState, useCallback } from "react";
+import { Responsive, WidthProvider, Layout } from "react-grid-layout";
+import {
+  Plus,
+  X,
+  BarChart3,
+  Table as TableIcon,
+  PieChart,
+  RefreshCw,
+} from "lucide-react";
 import {
   Table,
   TableBody,
@@ -10,25 +17,48 @@ import {
   TableRow,
   TablePagination,
   Paper,
-} from '@mui/material';
-import 'react-grid-layout/css/styles.css';
-import 'react-resizable/css/styles.css';
+} from "@mui/material";
+import "react-grid-layout/css/styles.css";
+import "react-resizable/css/styles.css";
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
 export interface Widget {
   id: string;
-  type: 'chart' | 'table' | 'metric';
+  type: "chart" | "table" | "metric";
   title: string;
+  tableName: string;
   query: string;
-  chartType?: 'bar' | 'line' | 'pie' | 'area';
+  chartType?: "bar" | "line" | "pie" | "area";
   data?: any[];
-  config?: {
-    xKey?: string;
-    yKey?: string;
-    seriesName?: string;
-    color?: string;
-  };
+  config?: WidgetConfiguration;
+}
+
+export interface WidgetConfiguration {
+  // Column selections for different chart types
+  xColumn?: string;
+  yColumn?: string;
+  labelColumn?: string; // for pie charts
+  valueColumn?: string; // for pie charts
+
+  // column metadata
+  columns?: ColumnMetadata[];
+
+  // optional aggregation
+  aggregation?: "SUM" | "AVG" | "COUNT" | "MIN" | "MAX" | null;
+
+  // legacy fields (TODO: maybe remove?)
+  xKey?: string;
+  yKey?: string;
+  seriesName?: string;
+  color?: string;
+}
+
+// Describe column properties
+export interface ColumnMetadata {
+  name: string;
+  type: "temporal" | "numeric" | "categorical" | "boolean" | "unknown";
+  sampleValues?: any[]; // used for preview
 }
 
 interface DashboardGridProps {
@@ -46,27 +76,38 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
 }) => {
   const [layouts, setLayouts] = useState<{ [key: string]: Layout[] }>({});
 
-  const handleLayoutChange = useCallback((layout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
-    setLayouts(allLayouts);
-  }, []);
+  const handleLayoutChange = useCallback(
+    (layout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
+      setLayouts(allLayouts);
+    },
+    []
+  );
 
-  const removeWidget = useCallback((widgetId: string) => {
-    const updatedWidgets = widgets.filter(w => w.id !== widgetId);
-    onWidgetUpdate(updatedWidgets);
-  }, [widgets, onWidgetUpdate]);
+  const removeWidget = useCallback(
+    (widgetId: string) => {
+      const updatedWidgets = widgets.filter((w) => w.id !== widgetId);
+      onWidgetUpdate(updatedWidgets);
+    },
+    [widgets, onWidgetUpdate]
+  );
 
-  const refreshWidget = useCallback(async (widgetId: string) => {
-    if (onRefreshWidget) {
-      await onRefreshWidget(widgetId);
-    }
-  }, [onRefreshWidget]);
+  const refreshWidget = useCallback(
+    async (widgetId: string) => {
+      if (onRefreshWidget) {
+        await onRefreshWidget(widgetId);
+      }
+    },
+    [onRefreshWidget]
+  );
 
   const getWidgetIcon = (type: string, chartType?: string) => {
-    if (type === 'table') return <TableIcon className="w-4 h-4" />;
-    if (type === 'chart') {
+    if (type === "table") return <TableIcon className="w-4 h-4" />;
+    if (type === "chart") {
       switch (chartType) {
-        case 'pie': return <PieChart className="w-4 h-4" />;
-        default: return <BarChart3 className="w-4 h-4" />;
+        case "pie":
+          return <PieChart className="w-4 h-4" />;
+        default:
+          return <BarChart3 className="w-4 h-4" />;
       }
     }
     return <BarChart3 className="w-4 h-4" />;
@@ -212,7 +253,7 @@ const WidgetContent: React.FC<{ widget: Widget }> = ({ widget }) => {
     );
   }
 
-  if (widget.type === 'table') {
+  if (widget.type === "table") {
     // Calculate paginated data
     const paginatedData = widget.data.slice(
       page * rowsPerPage,
@@ -224,7 +265,9 @@ const WidgetContent: React.FC<{ widget: Widget }> = ({ widget }) => {
       setPage(newPage);
     };
 
-    const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const handleChangeRowsPerPage = (
+      event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    ) => {
       const newValue = parseInt(event.target.value, 10);
       setRowsPerPage(newValue);
       setPage(0); // Go back to the first page to avoid confusion
@@ -234,9 +277,9 @@ const WidgetContent: React.FC<{ widget: Widget }> = ({ widget }) => {
       <TableContainer
         component={Paper}
         sx={{
-          height: '100%',
-          boxShadow: 'none',
-          backgroundColor: 'transparent',
+          height: "100%",
+          boxShadow: "none",
+          backgroundColor: "transparent",
         }}
       >
         <Table size="small" stickyHeader sx={{ minWidth: 300 }}>
@@ -246,9 +289,9 @@ const WidgetContent: React.FC<{ widget: Widget }> = ({ widget }) => {
                 <TableCell
                   key={key}
                   sx={{
-                    fontWeight: 'bold',
-                    color: 'text.secondary',
-                    padding: '8px',
+                    fontWeight: "bold",
+                    color: "text.secondary",
+                    padding: "8px",
                   }}
                 >
                   {key}
@@ -261,15 +304,15 @@ const WidgetContent: React.FC<{ widget: Widget }> = ({ widget }) => {
               <TableRow
                 key={index}
                 sx={{
-                  '&:hover': { backgroundColor: 'action.hover' },
+                  "&:hover": { backgroundColor: "action.hover" },
                 }}
               >
                 {Object.values(row).map((value, cellIndex) => (
                   <TableCell
                     key={cellIndex}
                     sx={{
-                      color: 'text.primary',
-                      padding: '8px',
+                      color: "text.primary",
+                      padding: "8px",
                     }}
                   >
                     {String(value)}
