@@ -1,19 +1,22 @@
 import { SimpleGrid, Box, Dialog, CloseButton } from "@chakra-ui/react";
-import { BarChart3, TableIcon, TrendingUp, PieChart, AreaChart, ArrowLeft } from "lucide-react";
+import {
+  BarChart3,
+  TableIcon,
+  TrendingUp,
+  PieChart,
+  AreaChart,
+  ArrowLeft,
+} from "lucide-react";
+import { WidgetConfiguration, ColumnMetadata } from "./DashboardGrid";
 import React, { useState } from "react";
 
 export interface WidgetConfig {
   type: "chart" | "table";
   chartType?: "bar" | "line" | "pie" | "area";
-  dataSource: string;
+  tableName: string;
   query: string;
   title: string;
-  config?: {
-    xKey?: string;
-    yKey?: string;
-    seriesName?: string;
-    color?: string;
-  };
+  config?: WidgetConfiguration;
 }
 
 interface WidgetConfigModalProps {
@@ -29,7 +32,6 @@ const WidgetConfigModal: React.FC<WidgetConfigModalProps> = ({
   onClose,
   tables,
   onCreateWidget,
-  queryFunction,
 }) => {
   type WizardStep = "SELECT_TYPE" | "SELECT_CHART_TYPE" | "CONFIGURE";
   const [currentStep, setCurrentStep] = useState<WizardStep>("SELECT_TYPE");
@@ -57,11 +59,11 @@ const WidgetConfigModal: React.FC<WidgetConfigModalProps> = ({
   const handleWidgetSelection = (type: "chart" | "table") => {
     setWidgetType(type);
     if (type === "chart") {
-        setCurrentStep("SELECT_CHART_TYPE");
-        setWidgetTitle("New Chart");
+      setCurrentStep("SELECT_CHART_TYPE");
+      setWidgetTitle("New Chart");
     } else {
-        setCurrentStep("CONFIGURE");
-        setWidgetTitle("New Table Widget");
+      setCurrentStep("CONFIGURE");
+      setWidgetTitle("New Table Widget");
     }
   };
 
@@ -145,7 +147,7 @@ const WidgetConfigModal: React.FC<WidgetConfigModalProps> = ({
       <Dialog.Positioner>
         <Dialog.Content>
           <Dialog.Header>
-            <div className="flex items-center gap-3">
+            <div className="flex py-1 px-3 items-center gap-3">
               {currentStep !== "SELECT_TYPE" && (
                 <button
                   onClick={handleBack}
@@ -158,16 +160,27 @@ const WidgetConfigModal: React.FC<WidgetConfigModalProps> = ({
               <Dialog.Title>
                 {currentStep === "SELECT_TYPE" && "Create New Widget"}
                 {currentStep === "SELECT_CHART_TYPE" && "Choose Chart Type"}
-                {currentStep === "CONFIGURE" && `Configure ${widgetType === "chart" ? chartType ? chartType.charAt(0).toUpperCase() + chartType.slice(1) + " Chart" : "Chart" : "Table"}`}
+                {currentStep === "CONFIGURE" &&
+                  `Configure ${
+                    widgetType === "chart"
+                      ? chartType
+                        ? chartType.charAt(0).toUpperCase() +
+                          chartType.slice(1) +
+                          " Chart"
+                        : "Chart"
+                      : "Table"
+                  }`}
               </Dialog.Title>
             </div>
           </Dialog.Header>
-          <Dialog.Body>
+          <Dialog.Body p={3}>
             {/* Step 1: Widget Type Selection */}
             {currentStep === "SELECT_TYPE" && (
               <>
                 <div className="mb-4">
-                  <p className="text-gray-600 text-sm">What would you like to add?</p>
+                  <p className="text-gray-600 text-sm">
+                    What would you like to add?
+                  </p>
                 </div>
                 <SimpleGrid columns={2} gap={4}>
                   {widgetTypes.map((widget) => {
@@ -175,7 +188,11 @@ const WidgetConfigModal: React.FC<WidgetConfigModalProps> = ({
                     return (
                       <Box
                         key={widget.type}
-                        onClick={() => handleWidgetSelection(widget.type as "chart" | "table")}
+                        onClick={() =>
+                          handleWidgetSelection(
+                            widget.type as "chart" | "table"
+                          )
+                        }
                         p={6}
                         borderWidth="2px"
                         borderRadius="lg"
@@ -195,8 +212,12 @@ const WidgetConfigModal: React.FC<WidgetConfigModalProps> = ({
                       >
                         <IconComponent className="w-12 h-12 text-blue-600" />
                         <div>
-                          <div className="font-semibold text-lg text-gray-800">{widget.label}</div>
-                          <div className="text-sm text-gray-500 mt-1">{widget.description}</div>
+                          <div className="font-semibold text-lg text-gray-800">
+                            {widget.label}
+                          </div>
+                          <div className="text-sm text-gray-500 mt-1">
+                            {widget.description}
+                          </div>
                         </div>
                       </Box>
                     );
@@ -209,7 +230,9 @@ const WidgetConfigModal: React.FC<WidgetConfigModalProps> = ({
             {currentStep === "SELECT_CHART_TYPE" && (
               <>
                 <div className="mb-4">
-                  <p className="text-gray-600 text-sm">Choose your chart type:</p>
+                  <p className="text-gray-600 text-sm">
+                    Choose your chart type:
+                  </p>
                 </div>
                 <SimpleGrid columns={2} gap={4}>
                   {chartTypes.map((chart) => {
@@ -237,9 +260,15 @@ const WidgetConfigModal: React.FC<WidgetConfigModalProps> = ({
                       >
                         <IconComponent className="w-12 h-12 text-blue-600" />
                         <div>
-                          <div className="font-semibold text-lg text-gray-800">{chart.label}</div>
-                          <div className="text-sm text-gray-500 mt-1">{chart.description}</div>
-                          <div className="text-xs text-gray-400 mt-2 italic">{chart.example}</div>
+                          <div className="font-semibold text-lg text-gray-800">
+                            {chart.label}
+                          </div>
+                          <div className="text-sm text-gray-500 mt-1">
+                            {chart.description}
+                          </div>
+                          <div className="text-xs text-gray-400 mt-2 italic">
+                            {chart.example}
+                          </div>
                         </div>
                       </Box>
                     );
@@ -253,7 +282,9 @@ const WidgetConfigModal: React.FC<WidgetConfigModalProps> = ({
               <div className="py-8 text-center text-gray-500">
                 <p>Configuration step coming soon...</p>
                 <p className="text-sm mt-2">Widget Type: {widgetType}</p>
-                {chartType && <p className="text-sm">Chart Type: {chartType}</p>}
+                {chartType && (
+                  <p className="text-sm">Chart Type: {chartType}</p>
+                )}
               </div>
             )}
           </Dialog.Body>
