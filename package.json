@@ -5,5 +5,9 @@
     "@emotion/styled": "^11.14.1",
     "@mui/material": "^7.3.2",
     "recharts": "^3.2.1"
+  },
+  "devDependencies": {
+    "@vitest/ui": "^3.2.4",
+    "vitest": "^3.2.4"
   }
 }

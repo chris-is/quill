@@ -462,11 +462,13 @@ export function isValidChartConfig(
         );
       }
 
-      const yColumnType = analysis.filter(
-        (col) => col.name === config.yColumn
-      )[0].type;
-      if (config.chartType === "line" && yColumnType === "categorical") {
-        warnings.push("Y-axis column in a line chart typically numeric");
+      if (config.yColumn) {
+        const yColumnType = analysis.filter(
+          (col) => col.name === config.yColumn
+        )[0].type;
+        if (config.chartType === "line" && yColumnType === "categorical") {
+          warnings.push("Y-axis column in a line chart typically numeric");
+        }
       }
     }
   }
