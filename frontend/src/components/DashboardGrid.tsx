@@ -47,7 +47,7 @@ export interface WidgetConfiguration {
   // optional aggregation
   aggregation?: "SUM" | "AVG" | "COUNT" | "MIN" | "MAX" | null;
 
-  // legacy fields (TODO: maybe remove?)
+  // legacy fields (CIXX TODO: maybe remove?)
   xKey?: string;
   yKey?: string;
   seriesName?: string;

@@ -245,7 +245,7 @@ export function analyzeDataset(data: any[]): ColumnAnalysis[] {
  */
 export function suggestChartConfig(
   data: any[],
-  // TODO: store this elsewhere universally, then import where needed
+  // CIXX TODO: store this elsewhere universally, then import where needed
   chartType: "bar" | "line" | "pie" | "area"
 ): ConfigSuggestion {
   const analysis = analyzeDataset(data);
