@@ -80,7 +80,7 @@ export const chartLayout = {
 // ============================================
 
 export const chartAnimation = {
-  duration: 800, // Animation duration in ms
+  duration: 300, // Animation duration in ms
   easing: "ease-in-out", // Animation timing function
 };
 
@@ -95,3 +95,41 @@ export const accessibleTextColor = (backgroundColor: string): string => {
   // CIXX TODO: implement contrast calculation for dynamic backgrounds
   return "#1f2937";
 };
+
+/**
+ * Formats large numbers in a human-readable way
+ * 100 -> 1K, 1000000 -> 1M, etc.
+ */
+export function formatLargeNumber(value: number): string {
+  if (value >= 1000000) {
+    return `${(value / 1000000).toFixed(1)}M`;
+  }
+  if (value >= 1000) {
+    return `${(value / 1000).toFixed(1)}K`;
+  }
+  return value.toLocaleString();
+}
+
+/**
+ * Default chart heights for different contexts
+ */
+export const chartHeights = {
+  small: "200px",
+  medium: "300px",
+  large: "400px",
+  widget: "100%", // Fill parent container
+};
+
+/**
+ * Chakra color tokens for charts
+ */
+export const chartColorTokens = {
+  primary: "blue.solid",
+  secondary: "purple.solid",
+  tertiary: "cyan.solid",
+  success: "green.solid",
+  warning: "orange.solid",
+  danger: "red.solid",
+};
+
+

@@ -20,6 +20,8 @@ import {
 } from "@mui/material";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
+import ChartContainer from "./charts/ChartContainer";
+import BarChartWidget from "./charts/BarChartWidget";
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -241,6 +243,7 @@ const WidgetContent: React.FC<{ widget: Widget }> = ({ widget }) => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
+  // Empty data handling
   if (!widget.data || widget.data.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-gray-400">
@@ -335,13 +338,50 @@ const WidgetContent: React.FC<{ widget: Widget }> = ({ widget }) => {
     );
   }
 
+  if (widget.type === "chart") {
+    const xColumn = widget.config?.xColumn;
+    const yColumn = widget.config?.yColumn;
+
+    // Validate config
+    if (!xColumn || !yColumn) {
+      return (
+        <ChartContainer error="Missing chart configuration">
+          <div />
+        </ChartContainer>
+      );
+    }
+
+    // Render based on chart type
+    switch (widget.chartType) {
+      case "bar":
+        return (
+          <BarChartWidget
+            data={widget.data}
+            xKey={xColumn}
+            yKey={yColumn}
+            showGrid={true}
+            rounded={true}
+          />
+        );
+      // TODO
+      case "pie":
+        return <div></div>;
+      // TODO
+      case "area":
+        return <div></div>;
+      default:
+        return (
+          <ChartContainer error={`Unknown chart type: ${widget.chartType}`}>
+            <div />
+          </ChartContainer>
+        );
+    }
+  }
+
+  // Fallback
   return (
     <div className="flex items-center justify-center h-full text-gray-400">
-      <div className="text-center">
-        <BarChart3 className="w-8 h-8 mx-auto mb-2" />
-        <p className="text-sm">Chart visualization</p>
-        <p className="text-xs text-gray-300 mt-1">Coming soon</p>
-      </div>
+      <p className="text-sm">Unknown widget type</p>
     </div>
   );
 };

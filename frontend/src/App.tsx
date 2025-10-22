@@ -4,7 +4,9 @@ import { FileUpload } from "./components/FileUpload";
 import { DashboardGrid, Widget } from "./components/DashboardGrid";
 import { SQLQueryInterface } from "./components/SQLQueryInterface";
 import { MyChart } from "./components/WidgetModel";
-import WidgetConfigModal, { WidgetConfig } from "./components/WidgetConfigModal";
+import WidgetConfigModal, {
+  WidgetConfig,
+} from "./components/WidgetConfigModal";
 import { Database, Upload, Code } from "lucide-react";
 import { initializeMonaco } from "./lib/monacoConfig";
 import "./App.css";
@@ -64,6 +66,20 @@ const AppContent: React.FC = () => {
       query: `SELECT * FROM ${tableName}`,
       config: {
         columns: [],
+      },
+    });
+
+    // TEST: add a bar chart widget
+    await createAndExecuteWidget({
+      id: `widget-bar-${Date.now()}`,
+      type: "chart",
+      chartType: "bar",
+      title: "Test Bar Chart",
+      tableName: tableName,
+      query: `SELECT * FROM ${tableName} LIMIT 10`,
+      config: {
+        xColumn: "category",
+        yColumn: "gross_revenue",
       },
     });
   };
