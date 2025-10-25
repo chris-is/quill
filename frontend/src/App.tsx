@@ -108,6 +108,19 @@ const AppContent: React.FC = () => {
         yColumn: "gross_revenue",
       },
     });
+
+    await createAndExecuteWidget({
+      id: `widget-area-${Date.now()}`,
+      type: "chart",
+      chartType: "area",
+      title: "Test Area Chart",
+      tableName: tableName,
+      query: `SELECT * FROM ${tableName} LIMIT 10`,
+      config: {
+        xColumn: "category",
+        yColumn: "gross_revenue",
+      },
+    });
   };
 
   const handleAddWidget = () => {

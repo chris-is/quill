@@ -24,6 +24,7 @@ import ChartContainer from "./charts/ChartContainer";
 import BarChartWidget from "./charts/BarChartWidget";
 import LineChartWidget from "./charts/LineChartWidget";
 import PieChartWidget from "./charts/PieChartWidget";
+import AreaChartWidget from "./charts/AreaChartWidget";
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -387,7 +388,14 @@ const WidgetContent: React.FC<{ widget: Widget }> = ({ widget }) => {
         );
       // TODO
       case "area":
-        return <div></div>;
+        return (
+          <AreaChartWidget
+            data={widget.data}
+            xKey={xColumn}
+            yKey={yColumn}
+            showGrid={true}
+          />
+        );
       default:
         return (
           <ChartContainer error={`Unknown chart type: ${widget.chartType}`}>
