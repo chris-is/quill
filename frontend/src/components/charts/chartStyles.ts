@@ -101,6 +101,12 @@ export const accessibleTextColor = (backgroundColor: string): string => {
  * 100 -> 1K, 1000000 -> 1M, etc.
  */
 export function formatLargeNumber(value: number): string {
+  if (value >= 1000000000000) {
+    return `${(value / 1000000000000).toFixed(1)}T`;
+  }
+  if (value >= 1000000000) {
+    return `${(value / 1000000000).toFixed(1)}B`;
+  }
   if (value >= 1000000) {
     return `${(value / 1000000).toFixed(1)}M`;
   }
@@ -108,6 +114,101 @@ export function formatLargeNumber(value: number): string {
     return `${(value / 1000).toFixed(1)}K`;
   }
   return value.toLocaleString();
+}
+
+// ============================================
+// DATA NORMALIZATION UTILITIES
+// ============================================
+
+/**
+ * Detects if a dataset has extreme outliers
+ * Returns true if the max value is more than 1000x the median
+ */
+export function hasExtremeOutliers(values: number[]): boolean {
+  if (values.length === 0) return false;
+
+  const sorted = [...values].sort((a, b) => a - b);
+  const median = sorted[Math.floor(sorted.length / 2)];
+  const max = sorted[sorted.length - 1];
+
+  return max > median * 1000;
+}
+
+/**
+ * Caps values at a certain percentile to handle outliers
+ * @param values - Array of numeric values
+ * @param percentile - Percentile to cap at (e.g., 95 means cap at 95th percentile)
+ * @returns Object with capped values and the cap threshold
+ */
+export function capOutliers(values: number[], percentile: number = 95): {
+  cappedValues: number[],
+  capThreshold: number,
+  hadOutliers: boolean
+} {
+  if (values.length === 0) return { cappedValues: [], capThreshold: 0, hadOutliers: false };
+
+  const sorted = [...values].sort((a, b) => a - b);
+  const index = Math.floor((percentile / 100) * sorted.length);
+  const capThreshold = sorted[index];
+
+  const cappedValues = values.map(v => Math.min(v, capThreshold));
+  const hadOutliers = values.some(v => v > capThreshold);
+
+  return { cappedValues, capThreshold, hadOutliers };
+}
+
+/**
+ * Normalizes data for pie charts by filtering out very small slices
+ * Groups small values into "Other" category
+ * @param data - Array of data objects
+ * @param valueKey - Key to use for values
+ * @param nameKey - Key to use for names
+ * @param threshold - Minimum percentage to show individually (default 2%)
+ */
+export function normalizePieData(
+  data: any[],
+  valueKey: string,
+  nameKey: string,
+  threshold: number = 2
+): any[] {
+  if (data.length === 0) return [];
+
+  const total = data.reduce((sum, item) => sum + (item[valueKey] || 0), 0);
+
+  const significantItems: any[] = [];
+  let otherTotal = 0;
+
+  data.forEach(item => {
+    const value = item[valueKey] || 0;
+    const percentage = (value / total) * 100;
+
+    if (percentage >= threshold) {
+      significantItems.push(item);
+    } else {
+      otherTotal += value;
+    }
+  });
+
+  // Add "Other" category if there are small values
+  if (otherTotal > 0) {
+    significantItems.push({
+      [nameKey]: 'Other',
+      [valueKey]: otherTotal
+    });
+  }
+
+  return significantItems;
+}
+
+/**
+ * Applies logarithmic scaling to values for better visualization
+ * Useful for bar/line charts with extreme ranges
+ */
+export function applyLogScale(values: number[]): number[] {
+  return values.map(v => {
+    if (v <= 0) return 0;
+    return Math.log10(v + 1); // +1 to handle values close to 0
+  });
 }
 
 /**

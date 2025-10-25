@@ -12,12 +12,14 @@ import {
 } from "recharts";
 import { Box, Text } from "@chakra-ui/react";
 import {
-  chartColors,
-  chartTypography,
-  chartLayout,
-  chartAnimation,
-  chartColorTokens,
-  formatLargeNumber,
+    chartColors,
+    chartTypography,
+    chartLayout,
+    chartAnimation,
+    chartColorTokens,
+    formatLargeNumber,
+    capOutliers,
+    hasExtremeOutliers,
 } from "./chartStyles";
 
 interface BarChartWidgetProps {
@@ -54,15 +56,45 @@ const BarChartWidget = ({
     );
   }
 
+  // Convert string values to numbers for the yKey
+  const numericData = data.map(item => ({
+    ...item,
+    [yKey]: typeof item[yKey] === 'string' ? parseFloat(item[yKey]) : item[yKey]
+  }));
+
+  // Extract numeric values for outlier detection
+  const values = numericData.map(item => item[yKey]);
+  const hasOutliers = hasExtremeOutliers(values);
+
+  // Cap outliers at 95th percentile for better visualization
+  let processedData = numericData;
+  let capInfo = null;
+
+  if (hasOutliers) {
+    const { cappedValues, capThreshold, hadOutliers } = capOutliers(values, 95);
+    processedData = numericData.map((item, index) => ({
+      ...item,
+      [yKey]: cappedValues[index],
+      _originalValue: values[index] // Store original for tooltip
+    }));
+    capInfo = { capThreshold, hadOutliers };
+  }
+
   // Initialize chart with useChart hook
   const chart = useChart({
-    data: data,
+    data: processedData,
     series: [{ name: yKey, color }],
   });
 
   return (
-    <Chart.Root chart={chart} height={minHeight}>
-      <BarChart data={chart.data}>
+    <Box>
+      {capInfo?.hadOutliers && (
+        <Text fontSize="xs" color="gray.500" mb={2} textAlign="center">
+          Values capped at {formatLargeNumber(capInfo.capThreshold)} (95th percentile) for better visibility
+        </Text>
+      )}
+      <Chart.Root chart={chart} height={minHeight}>
+        <BarChart data={chart.data}>
         {showGrid && (
           <CartesianGrid
             stroke={chart.color("border.muted")}
@@ -103,6 +135,7 @@ const BarChartWidget = ({
         ))}
       </BarChart>
     </Chart.Root>
+    </Box>
   );
 };
 

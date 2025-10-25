@@ -22,6 +22,8 @@ import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 import ChartContainer from "./charts/ChartContainer";
 import BarChartWidget from "./charts/BarChartWidget";
+import LineChartWidget from "./charts/LineChartWidget";
+import PieChartWidget from "./charts/PieChartWidget";
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -364,8 +366,25 @@ const WidgetContent: React.FC<{ widget: Widget }> = ({ widget }) => {
           />
         );
       // TODO
+      case "line":
+        return (
+          <LineChartWidget
+            data={widget.data}
+            xKey={xColumn}
+            yKey={yColumn}
+            showGrid={true}
+          />
+        );
+      // TODO
       case "pie":
-        return <div></div>;
+        return (
+          <PieChartWidget
+            data={widget.data}
+            xKey={xColumn}
+            yKey={yColumn}
+            showGrid={true}
+          />
+        );
       // TODO
       case "area":
         return <div></div>;

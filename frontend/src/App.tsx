@@ -82,6 +82,32 @@ const AppContent: React.FC = () => {
         yColumn: "gross_revenue",
       },
     });
+
+    await createAndExecuteWidget({
+      id: `widget-line-${Date.now()}`,
+      type: "chart",
+      chartType: "line",
+      title: "Test Line Chart",
+      tableName: tableName,
+      query: `SELECT * FROM ${tableName} LIMIT 10`,
+      config: {
+        xColumn: "category",
+        yColumn: "gross_revenue",
+      },
+    });
+
+    await createAndExecuteWidget({
+      id: `widget-pie-${Date.now()}`,
+      type: "chart",
+      chartType: "pie",
+      title: "Test Pie Chart",
+      tableName: tableName,
+      query: `SELECT * FROM ${tableName} LIMIT 10`,
+      config: {
+        xColumn: "category",
+        yColumn: "gross_revenue",
+      },
+    });
   };
 
   const handleAddWidget = () => {
