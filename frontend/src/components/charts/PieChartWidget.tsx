@@ -4,25 +4,16 @@ import { Chart, useChart } from "@chakra-ui/charts";
 import {
   Pie,
   PieChart,
-  CartesianGrid,
-  XAxis,
-  YAxis,
   Tooltip,
-  ResponsiveContainer,
   Cell,
+  Legend,
 } from "recharts";
 
 import { Box, Text } from "@chakra-ui/react";
 import {
-  chartColors,
-  chartTypography,
-  chartLayout,
-  chartAnimation,
   chartColorTokens,
-  formatLargeNumber,
   multiSeriesColors,
   normalizePieData,
-  hasExtremeOutliers,
 } from "./chartStyles";
 
 interface PieChartWidgetProps {
@@ -42,13 +33,7 @@ const PieChartWidget = ({
   showGrid = true,
   minHeight = "300px",
 }: PieChartWidgetProps) => {
-  // Debug logging - check what data we're receiving
-  console.log("PieChartWidget - data:", data);
-  console.log("PieChartWidget - xKey:", xKey);
-  console.log("PieChartWidget - yKey:", yKey);
-
   if (!data || data.length === 0) {
-    console.log("PieChartWidget - NO DATA");
     return (
       <Box
         display="flex"
@@ -74,9 +59,6 @@ const PieChartWidget = ({
   // This prevents tiny slices from being invisible when there are huge outliers
   const normalizedData = normalizePieData(numericData, yKey, xKey, 1); // 1% threshold
 
-  console.log("PieChartWidget - original data count:", numericData.length);
-  console.log("PieChartWidget - normalized data count:", normalizedData.length);
-
   // Initialize chart with useChart hook
   const chart = useChart({
     data: normalizedData,
@@ -84,6 +66,14 @@ const PieChartWidget = ({
 
   // Check if data was normalized (grouped into "Other")
   const wasNormalized = normalizedData.length < numericData.length;
+
+  // Create custom legend payload that matches our Cell colors
+  const customLegendPayload = normalizedData.map((item, index) => ({
+    value: item[xKey],
+    type: "circle" as const,
+    id: item[xKey],
+    color: multiSeriesColors[index % multiSeriesColors.length],
+  }));
 
   return (
     <Box>
@@ -94,6 +84,12 @@ const PieChartWidget = ({
       )}
       <Chart.Root chart={chart} height={minHeight}>
         <PieChart width={400} height={300}>
+          <Legend
+            payload={customLegendPayload}
+            iconType="circle"
+            verticalAlign="bottom"
+            height={36}
+          />
           <Pie
             isAnimationActive={true}
             data={chart.data}
