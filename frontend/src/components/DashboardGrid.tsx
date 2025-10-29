@@ -42,7 +42,7 @@ export interface Widget {
 export interface WidgetConfiguration {
   // Column selections for different chart types
   xColumn?: string;
-  yColumn?: string;
+  yColumns?: string[];
   labelColumn?: string; // for pie charts
   valueColumn?: string; // for pie charts
 
@@ -343,10 +343,10 @@ const WidgetContent: React.FC<{ widget: Widget }> = ({ widget }) => {
 
   if (widget.type === "chart") {
     const xColumn = widget.config?.xColumn;
-    const yColumn = widget.config?.yColumn;
+    const yColumns = widget.config?.yColumns;
 
     // Validate config
-    if (!xColumn || !yColumn) {
+    if (!xColumn || !yColumns || yColumns.length === 0) {
       return (
         <ChartContainer error="Missing chart configuration">
           <div />
@@ -361,38 +361,35 @@ const WidgetContent: React.FC<{ widget: Widget }> = ({ widget }) => {
           <BarChartWidget
             data={widget.data}
             xKey={xColumn}
-            yKey={yColumn}
+            yKeys={yColumns}
             showGrid={true}
             rounded={true}
           />
         );
-      // TODO
       case "line":
         return (
           <LineChartWidget
             data={widget.data}
             xKey={xColumn}
-            yKey={yColumn}
+            yKeys={yColumns}
             showGrid={true}
           />
         );
-      // TODO
       case "pie":
         return (
           <PieChartWidget
             data={widget.data}
             xKey={xColumn}
-            yKey={yColumn}
+            yKey={yColumns[0]}
             showGrid={true}
           />
         );
-      // TODO
       case "area":
         return (
           <AreaChartWidget
             data={widget.data}
             xKey={xColumn}
-            yKey={yColumn}
+            yKeys={yColumns}
             showGrid={true}
           />
         );

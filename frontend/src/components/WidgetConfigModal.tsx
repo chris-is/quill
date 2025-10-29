@@ -43,7 +43,7 @@ const WidgetConfigModal: React.FC<WidgetConfigModalProps> = ({
   const [selectedTable, setSelectedTable] = useState<string>("");
   const [widgetTitle, setWidgetTitle] = useState<string>("");
   const [xAxisColumn, setXAxisColumn] = useState<string>("");
-  const [yAxisColumn, setYAxisColumn] = useState<string>("");
+  const [yAxisColumns, setYAxisColumns] = useState<string[]>([]); // multi-series support
 
   // triggered when modal is closed
   const resetModel = () => {
@@ -53,7 +53,7 @@ const WidgetConfigModal: React.FC<WidgetConfigModalProps> = ({
     setSelectedTable("");
     setWidgetTitle("");
     setXAxisColumn("");
-    setYAxisColumn("");
+    setYAxisColumns([]); // Reset multi-series columns
   };
 
   const handleWidgetSelection = (type: "chart" | "table") => {

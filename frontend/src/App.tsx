@@ -69,7 +69,7 @@ const AppContent: React.FC = () => {
       },
     });
 
-    // TEST: add a bar chart widget
+    // TEST: add a bar chart widget with multiple series
     await createAndExecuteWidget({
       id: `widget-bar-${Date.now()}`,
       type: "chart",
@@ -79,7 +79,7 @@ const AppContent: React.FC = () => {
       query: `SELECT * FROM ${tableName} LIMIT 10`,
       config: {
         xColumn: "category",
-        yColumn: "gross_revenue",
+        yColumns: ["gross_revenue"], // Changed to array - you can add more columns here
       },
     });
 
@@ -92,7 +92,7 @@ const AppContent: React.FC = () => {
       query: `SELECT * FROM ${tableName} LIMIT 10`,
       config: {
         xColumn: "category",
-        yColumn: "gross_revenue",
+        yColumns: ["gross_revenue"], // Changed to array
       },
     });
 
@@ -105,7 +105,7 @@ const AppContent: React.FC = () => {
       query: `SELECT * FROM ${tableName} LIMIT 10`,
       config: {
         xColumn: "category",
-        yColumn: "gross_revenue",
+        yColumns: ["gross_revenue"], // Changed to array (pie uses first element)
       },
     });
 
@@ -118,7 +118,7 @@ const AppContent: React.FC = () => {
       query: `SELECT * FROM ${tableName} LIMIT 10`,
       config: {
         xColumn: "category",
-        yColumn: "gross_revenue",
+        yColumns: ["gross_revenue"], // Changed to array
       },
     });
   };

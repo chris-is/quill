@@ -1,5 +1,4 @@
 import React from "react";
-
 import { Chart, useChart } from "@chakra-ui/charts";
 import {
   CartesianGrid,
@@ -8,6 +7,7 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  Legend,
 } from "recharts";
 import {
   chartColorTokens,
@@ -15,14 +15,14 @@ import {
   chartAnimation,
   hasExtremeOutliers,
   capOutliers,
+  multiSeriesColors,
 } from "./chartStyles";
 import { Box, Text } from "@chakra-ui/react";
 
 interface LineChartWidgetProps {
   data: any[];
   xKey: string;
-  yKey: string;
-  color?: string;
+  yKeys: string[];
   showGrid?: boolean;
   minHeight?: string;
 }
@@ -30,8 +30,7 @@ interface LineChartWidgetProps {
 const LineChartWidget = ({
   data,
   xKey,
-  yKey,
-  color = chartColorTokens.primary,
+  yKeys,
   showGrid = true,
   minHeight = "300px",
 }: LineChartWidgetProps) => {
@@ -50,43 +49,57 @@ const LineChartWidget = ({
     );
   }
 
-  // Convert string values to numbers for the yKey
-  const numericData = data.map((item) => ({
-    ...item,
-    [yKey]:
-      typeof item[yKey] === "string" ? parseFloat(item[yKey]) : item[yKey],
+  // Convert string values to numbers for ALL yKeys
+  let processedData = data.map((item) => {
+    const newItem = { ...item };
+    yKeys.forEach((yKey) => {
+      newItem[yKey] =
+        typeof item[yKey] === "string" ? parseFloat(item[yKey]) : item[yKey];
+    });
+    return newItem;
+  });
+
+  // Per-series outlier detection and capping
+  const capInfoBySeries: Record<string, { capThreshold: number; hadOutliers: boolean }> = {};
+  let anyOutliers = false;
+
+  yKeys.forEach((yKey) => {
+    const values = processedData.map((item) => item[yKey]);
+    const hasOutliers = hasExtremeOutliers(values);
+
+    if (hasOutliers) {
+      const { cappedValues, capThreshold, hadOutliers } = capOutliers(values, 95);
+
+      processedData = processedData.map((item, index) => ({
+        ...item,
+        [yKey]: cappedValues[index],
+        [`_original_${yKey}`]: values[index], // Store original for tooltip
+      }));
+
+      if (hadOutliers) {
+        capInfoBySeries[yKey] = { capThreshold, hadOutliers };
+        anyOutliers = true;
+      }
+    }
+  });
+
+  // Build series array with colors cycling through multiSeriesColors
+  const series = yKeys.map((yKey, index) => ({
+    name: yKey,
+    color: multiSeriesColors[index % multiSeriesColors.length],
   }));
 
-  // Extract numeric values for outlier detection
-  const values = numericData.map((item) => item[yKey]);
-  const hasOutliers = hasExtremeOutliers(values);
-
-  // Cap outliers at 95th percentile for better visualization
-  let processedData = numericData;
-  let capInfo = null;
-
-  if (hasOutliers) {
-    const { cappedValues, capThreshold, hadOutliers } = capOutliers(values, 95);
-    processedData = numericData.map((item, index) => ({
-      ...item,
-      [yKey]: cappedValues[index],
-      _originalValue: values[index], // Store original for tooltip
-    }));
-    capInfo = { capThreshold, hadOutliers };
-  }
-
-  // Initialize chart with useChart
+  // Initialize chart with useChart hook
   const chart = useChart({
     data: processedData,
-    series: [{ name: yKey, color: color }],
+    series: series,
   });
 
   return (
     <Box>
-      {capInfo?.hadOutliers && (
+      {anyOutliers && (
         <Text fontSize="xs" color="gray.500" mb={2} textAlign="center">
-          Values capped at {formatLargeNumber(capInfo.capThreshold)} (95th
-          percentile) for better visibility
+          Some values capped at 95th percentile for better visibility
         </Text>
       )}
       <Chart.Root chart={chart} height={minHeight}>
@@ -113,12 +126,14 @@ const LineChartWidget = ({
             tickFormatter={(value) => formatLargeNumber(value)}
           />
 
-          {/*On hover*/}
           <Tooltip
             cursor={{ fill: chart.color("bg.muted") }}
             animationDuration={100}
             content={<Chart.Tooltip />}
           />
+
+          {/* Add legend for multiple series */}
+          {yKeys.length > 1 && <Legend content={<Chart.Legend />} />}
 
           {chart.series.map((item) => (
             <Line
