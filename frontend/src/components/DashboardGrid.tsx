@@ -20,6 +20,11 @@ import {
 } from "@mui/material";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
+import ChartContainer from "./charts/ChartContainer";
+import BarChartWidget from "./charts/BarChartWidget";
+import LineChartWidget from "./charts/LineChartWidget";
+import PieChartWidget from "./charts/PieChartWidget";
+import AreaChartWidget from "./charts/AreaChartWidget";
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
 
@@ -37,7 +42,7 @@ export interface Widget {
 export interface WidgetConfiguration {
   // Column selections for different chart types
   xColumn?: string;
-  yColumn?: string;
+  yColumns?: string[];
   labelColumn?: string; // for pie charts
   valueColumn?: string; // for pie charts
 
@@ -47,7 +52,7 @@ export interface WidgetConfiguration {
   // optional aggregation
   aggregation?: "SUM" | "AVG" | "COUNT" | "MIN" | "MAX" | null;
 
-  // legacy fields (TODO: maybe remove?)
+  // legacy fields (CIXX TODO: maybe remove?)
   xKey?: string;
   yKey?: string;
   seriesName?: string;
@@ -241,6 +246,7 @@ const WidgetContent: React.FC<{ widget: Widget }> = ({ widget }) => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
+  // Empty data handling
   if (!widget.data || widget.data.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-gray-400">
@@ -335,13 +341,71 @@ const WidgetContent: React.FC<{ widget: Widget }> = ({ widget }) => {
     );
   }
 
+  if (widget.type === "chart") {
+    const xColumn = widget.config?.xColumn;
+    const yColumns = widget.config?.yColumns;
+
+    // Validate config
+    if (!xColumn || !yColumns || yColumns.length === 0) {
+      return (
+        <ChartContainer error="Missing chart configuration">
+          <div />
+        </ChartContainer>
+      );
+    }
+
+    // Render based on chart type
+    switch (widget.chartType) {
+      case "bar":
+        return (
+          <BarChartWidget
+            data={widget.data}
+            xKey={xColumn}
+            yKeys={yColumns}
+            showGrid={true}
+            rounded={true}
+          />
+        );
+      case "line":
+        return (
+          <LineChartWidget
+            data={widget.data}
+            xKey={xColumn}
+            yKeys={yColumns}
+            showGrid={true}
+          />
+        );
+      case "pie":
+        return (
+          <PieChartWidget
+            data={widget.data}
+            xKey={xColumn}
+            yKey={yColumns[0]}
+            showGrid={true}
+          />
+        );
+      case "area":
+        return (
+          <AreaChartWidget
+            data={widget.data}
+            xKey={xColumn}
+            yKeys={yColumns}
+            showGrid={true}
+          />
+        );
+      default:
+        return (
+          <ChartContainer error={`Unknown chart type: ${widget.chartType}`}>
+            <div />
+          </ChartContainer>
+        );
+    }
+  }
+
+  // Fallback
   return (
     <div className="flex items-center justify-center h-full text-gray-400">
-      <div className="text-center">
-        <BarChart3 className="w-8 h-8 mx-auto mb-2" />
-        <p className="text-sm">Chart visualization</p>
-        <p className="text-xs text-gray-300 mt-1">Coming soon</p>
-      </div>
+      <p className="text-sm">Unknown widget type</p>
     </div>
   );
 };

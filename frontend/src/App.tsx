@@ -4,7 +4,9 @@ import { FileUpload } from "./components/FileUpload";
 import { DashboardGrid, Widget } from "./components/DashboardGrid";
 import { SQLQueryInterface } from "./components/SQLQueryInterface";
 import { MyChart } from "./components/WidgetModel";
-import WidgetConfigModal, { WidgetConfig } from "./components/WidgetConfigModal";
+import WidgetConfigModal, {
+  WidgetConfig,
+} from "./components/WidgetConfigModal";
 import { Database, Upload, Code } from "lucide-react";
 import { initializeMonaco } from "./lib/monacoConfig";
 import "./App.css";
@@ -64,6 +66,59 @@ const AppContent: React.FC = () => {
       query: `SELECT * FROM ${tableName}`,
       config: {
         columns: [],
+      },
+    });
+
+    // TEST: add a bar chart widget with multiple series
+    await createAndExecuteWidget({
+      id: `widget-bar-${Date.now()}`,
+      type: "chart",
+      chartType: "bar",
+      title: "Test Bar Chart",
+      tableName: tableName,
+      query: `SELECT * FROM ${tableName} LIMIT 10`,
+      config: {
+        xColumn: "category",
+        yColumns: ["gross_revenue"], // Changed to array - you can add more columns here
+      },
+    });
+
+    await createAndExecuteWidget({
+      id: `widget-line-${Date.now()}`,
+      type: "chart",
+      chartType: "line",
+      title: "Test Line Chart",
+      tableName: tableName,
+      query: `SELECT * FROM ${tableName} LIMIT 10`,
+      config: {
+        xColumn: "category",
+        yColumns: ["gross_revenue"], // Changed to array
+      },
+    });
+
+    await createAndExecuteWidget({
+      id: `widget-pie-${Date.now()}`,
+      type: "chart",
+      chartType: "pie",
+      title: "Test Pie Chart",
+      tableName: tableName,
+      query: `SELECT * FROM ${tableName} LIMIT 10`,
+      config: {
+        xColumn: "category",
+        yColumns: ["gross_revenue"], // Changed to array (pie uses first element)
+      },
+    });
+
+    await createAndExecuteWidget({
+      id: `widget-area-${Date.now()}`,
+      type: "chart",
+      chartType: "area",
+      title: "Test Area Chart",
+      tableName: tableName,
+      query: `SELECT * FROM ${tableName} LIMIT 10`,
+      config: {
+        xColumn: "category",
+        yColumns: ["gross_revenue"], // Changed to array
       },
     });
   };
