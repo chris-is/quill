@@ -1,4 +1,13 @@
-import { SimpleGrid, Box, Dialog, CloseButton } from "@chakra-ui/react";
+import {
+  SimpleGrid,
+  Box,
+  Dialog,
+  CloseButton,
+  VStack,
+  Field,
+  NativeSelect,
+  Spinner,
+} from "@chakra-ui/react";
 import {
   BarChart3,
   TableIcon,
@@ -8,7 +17,8 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { WidgetConfiguration, ColumnMetadata } from "./DashboardGrid";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { analyzeDataset, suggestChartConfig } from "../lib/columnInference";
 
 export interface WidgetConfig {
   type: "chart" | "table";
@@ -32,6 +42,7 @@ const WidgetConfigModal: React.FC<WidgetConfigModalProps> = ({
   onClose,
   tables,
   onCreateWidget,
+  queryFunction,
 }) => {
   type WizardStep = "SELECT_TYPE" | "SELECT_CHART_TYPE" | "CONFIGURE";
   const [currentStep, setCurrentStep] = useState<WizardStep>("SELECT_TYPE");
@@ -45,6 +56,14 @@ const WidgetConfigModal: React.FC<WidgetConfigModalProps> = ({
   const [xAxisColumn, setXAxisColumn] = useState<string>("");
   const [yAxisColumns, setYAxisColumns] = useState<string[]>([]); // multi-series support
 
+  const [schemaColumns, setSchemaColumns] = useState<ColumnMetadata[]>([]);
+  const [isLoadingSchema, setIsLoadingSchema] = useState(false);
+  const [schemaError, setSchemaError] = useState<string | null>(null);
+  const [selectedColumns, setSelectedColumns] = useState<string[]>([]);
+  const [labelColumn, setLabelColumn] = useState<string>(""); // For pie charts
+  const [valueColumn, setValueColumn] = useState<string>(""); // For pie charts
+  const [validationErrors, setValidationErrors] = useState<string[]>([]); // Accumulate validation errors before submission
+
   // triggered when modal is closed
   const resetModel = () => {
     setCurrentStep("SELECT_TYPE");
@@ -54,6 +73,13 @@ const WidgetConfigModal: React.FC<WidgetConfigModalProps> = ({
     setWidgetTitle("");
     setXAxisColumn("");
     setYAxisColumns([]); // Reset multi-series columns
+    setSchemaColumns([]);
+    setIsLoadingSchema(false);
+    setSchemaError(null);
+    setSelectedColumns([]);
+    setLabelColumn("");
+    setValueColumn("");
+    setValidationErrors([]);
   };
 
   const handleWidgetSelection = (type: "chart" | "table") => {
@@ -72,6 +98,178 @@ const WidgetConfigModal: React.FC<WidgetConfigModalProps> = ({
     setCurrentStep("CONFIGURE");
     const chartName = type.charAt(0).toUpperCase() + type.slice(1);
     setWidgetTitle(`New ${chartName} Chart`);
+  };
+
+  const fetchTableSchema = async (tableName: string) => {
+    if (!queryFunction) {
+      setSchemaError("Query function not available");
+      return;
+    }
+
+    setIsLoadingSchema(true);
+    setSchemaError(null);
+
+    try {
+      // Fetch sample data to analyze column characteristics
+      const sampleData = await queryFunction(
+        `SELECT * FROM ${tableName} LIMIT 100`
+      );
+
+      // Use inference utilities to analyze columns
+      const analyzedColumns = analyzeDataset(sampleData);
+
+      setSchemaColumns(analyzedColumns);
+
+      // Auto-populate smart defaults based on chart type
+      if (chartType && sampleData.length > 0) {
+        const suggestion = suggestChartConfig(sampleData, chartType);
+
+        if (suggestion.xColumn) {
+          setXAxisColumn(suggestion.xColumn);
+        }
+        if (suggestion.yColumn) {
+          setYAxisColumns([suggestion.yColumn]);
+        }
+
+        // For pie charts
+        if (chartType === "pie") {
+          if (suggestion.labelColumn) setLabelColumn(suggestion.labelColumn);
+          if (suggestion.valueColumn) setValueColumn(suggestion.valueColumn);
+        }
+      }
+
+      // For table widgets, select all columns by default
+      if (widgetType === "table") {
+        setSelectedColumns(analyzedColumns.map((col) => col.name));
+      }
+    } catch (error: any) {
+      console.error("Failed to fetch table schema: ", error);
+      // CIXX TODO: verify what sort of errors end up here
+      setSchemaError(`Failed to load schema: ${error.message}`);
+    } finally {
+      setIsLoadingSchema(false);
+    }
+  };
+
+  useEffect(() => {
+    if (currentStep === "CONFIGURE" && selectedTable) {
+      fetchTableSchema(selectedTable);
+    }
+  }, [selectedTable, currentStep]);
+
+  // validation logic
+  const validateConfiguration = (): boolean => {
+    const errors: string[] = [];
+
+    if (!selectedTable) {
+      errors.push("Please select a table");
+    }
+    if (!widgetTitle.trim()) {
+      // CIXX TODO: consider making title optional
+      errors.push("Please enter a widget title");
+    }
+
+    if (widgetType === "table") {
+      if (selectedColumns.length === 0) {
+        errors.push("Please select at least one column for the table");
+      }
+
+      const columnNames = schemaColumns.map((c) => c.name);
+      const invalidColumns = selectedColumns.filter(
+        (col) => !columnNames.includes(col)
+      );
+      if (invalidColumns.length > 0) {
+        errors.push(`Invalid columns: ${invalidColumns.join(", ")}`);
+      }
+    }
+
+    if (widgetType === "chart") {
+      const columnNames = schemaColumns.map((c) => c.name);
+
+      if (chartType === "pie") {
+        if (!labelColumn) {
+          errors.push("Please select a label column for the pie chart");
+        } else if (!columnNames.includes(labelColumn)) {
+          errors.push(`Label column "${labelColumn}" does not exist in table`);
+        }
+
+        if (!valueColumn) {
+          errors.push("Please select a value column for the pie chart");
+        } else if (!columnNames.includes(valueColumn)) {
+          errors.push(`Value column "${valueColumn}" does not exist in table`);
+        }
+      } else {
+        if (!xAxisColumn) {
+          errors.push("Please select an X-axis column");
+        } else if (!columnNames.includes(xAxisColumn)) {
+          errors.push(`X-axis column "${xAxisColumn}" does not exist in table`);
+        }
+
+        if (yAxisColumns.length === 0) {
+          errors.push("Please select at least one Y-axis column");
+        } else {
+          const invalidYColumns = yAxisColumns.filter(
+            (col) => !columnNames.includes(col)
+          );
+          if (invalidYColumns.length > 0) {
+            errors.push(
+              `Invalid Y-axis columns: ${invalidYColumns.join(", ")}`
+            );
+          }
+        }
+      }
+    }
+
+    setValidationErrors(errors);
+    return errors.length === 0;
+  };
+
+  // widget create handler
+  const handleCreateWidget = () => {
+    if (!validateConfiguration()) {
+      return;
+    }
+
+    let query = "";
+    if (widgetType === "table") {
+      const columnsList = selectedColumns.join(", ");
+      query = `SELECT ${columnsList} FROM ${selectedTable}`;
+    } else if (widgetType === "chart") {
+      if (chartType === "pie") {
+        query = `SELECT ${labelColumn}, ${valueColumn} FROM ${selectedTable}`;
+      } else {
+        const columns = [xAxisColumn, ...yAxisColumns].join(", ");
+        query = `SELECT ${columns} FROM ${selectedTable}`;
+      }
+    }
+
+    const config: WidgetConfiguration = {
+      columns: schemaColumns,
+    };
+
+    if (widgetType === "chart") {
+      if (chartType === "pie") {
+        config.labelColumn = labelColumn;
+        config.valueColumn = valueColumn;
+        config.xColumn = labelColumn;
+        config.yColumns = [valueColumn];
+      } else {
+        config.xColumn = xAxisColumn;
+        config.yColumns = yAxisColumns;
+      }
+    }
+
+    onCreateWidget({
+      type: widgetType!,
+      chartType: chartType || undefined,
+      tableName: selectedTable,
+      query: query,
+      title: widgetTitle,
+      config: config,
+    });
+
+    resetModel();
+    onClose();
   };
 
   const handleBack = () => {
@@ -279,13 +477,37 @@ const WidgetConfigModal: React.FC<WidgetConfigModalProps> = ({
 
             {/* Step 3: Configuration - Placeholder for now */}
             {currentStep === "CONFIGURE" && (
-              <div className="py-8 text-center text-gray-500">
-                <p>Configuration step coming soon...</p>
-                <p className="text-sm mt-2">Widget Type: {widgetType}</p>
-                {chartType && (
-                  <p className="text-sm">Chart Type: {chartType}</p>
+              <VStack gap={6} align="stretch">
+                {/* Table Selection Dropdown */}
+                <Field.Root>
+                  <Field.Label>Select Table</Field.Label>
+                  <NativeSelect.Root size="md" disabled={isLoadingSchema}>
+                    <NativeSelect.Field
+                      value={selectedTable}
+                      onChange={(e) => setSelectedTable(e.target.value)}
+                    >
+                      <option value="">Choose a table...</option>
+                      {tables.map((table) => (
+                        <option key={table} value={table}>
+                          {table}
+                        </option>
+                      ))}
+                    </NativeSelect.Field>
+                  </NativeSelect.Root>
+                </Field.Root>
+
+                {/* Loading State */}
+                {isLoadingSchema && (
+                  <Box py={8}>
+                    <VStack gap={2}>
+                      <Spinner size="lg" color="blue.500" />
+                      {/* <Text fontSize="sm" color="gray.600">
+                        Loading schema...
+                      </Text> */}
+                    </VStack>
+                  </Box>
                 )}
-              </div>
+              </VStack>
             )}
           </Dialog.Body>
           <Dialog.CloseTrigger asChild>
