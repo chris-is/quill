@@ -7,6 +7,9 @@ import {
   Field,
   NativeSelect,
   Spinner,
+  CheckboxGroup,
+  Stack,
+  Checkbox,
 } from "@chakra-ui/react";
 import {
   BarChart3,
@@ -112,7 +115,7 @@ const WidgetConfigModal: React.FC<WidgetConfigModalProps> = ({
     try {
       // Fetch sample data to analyze column characteristics
       const sampleData = await queryFunction(
-        `SELECT * FROM ${tableName} LIMIT 100`
+        `SELECT * FROM ${tableName} LIMIT 100`,
       );
 
       // Use inference utilities to analyze columns
@@ -176,7 +179,7 @@ const WidgetConfigModal: React.FC<WidgetConfigModalProps> = ({
 
       const columnNames = schemaColumns.map((c) => c.name);
       const invalidColumns = selectedColumns.filter(
-        (col) => !columnNames.includes(col)
+        (col) => !columnNames.includes(col),
       );
       if (invalidColumns.length > 0) {
         errors.push(`Invalid columns: ${invalidColumns.join(", ")}`);
@@ -209,11 +212,11 @@ const WidgetConfigModal: React.FC<WidgetConfigModalProps> = ({
           errors.push("Please select at least one Y-axis column");
         } else {
           const invalidYColumns = yAxisColumns.filter(
-            (col) => !columnNames.includes(col)
+            (col) => !columnNames.includes(col),
           );
           if (invalidYColumns.length > 0) {
             errors.push(
-              `Invalid Y-axis columns: ${invalidYColumns.join(", ")}`
+              `Invalid Y-axis columns: ${invalidYColumns.join(", ")}`,
             );
           }
         }
@@ -388,7 +391,7 @@ const WidgetConfigModal: React.FC<WidgetConfigModalProps> = ({
                         key={widget.type}
                         onClick={() =>
                           handleWidgetSelection(
-                            widget.type as "chart" | "table"
+                            widget.type as "chart" | "table",
                           )
                         }
                         p={6}
@@ -475,7 +478,7 @@ const WidgetConfigModal: React.FC<WidgetConfigModalProps> = ({
               </>
             )}
 
-            {/* Step 3: Configuration - Placeholder for now */}
+            {/* Step 3: Configuration */}
             {currentStep === "CONFIGURE" && (
               <VStack gap={6} align="stretch">
                 {/* Table Selection Dropdown */}
@@ -485,6 +488,7 @@ const WidgetConfigModal: React.FC<WidgetConfigModalProps> = ({
                     <NativeSelect.Field
                       value={selectedTable}
                       onChange={(e) => setSelectedTable(e.target.value)}
+                      pl={3}
                     >
                       <option value="">Choose a table...</option>
                       {tables.map((table) => (
@@ -501,10 +505,260 @@ const WidgetConfigModal: React.FC<WidgetConfigModalProps> = ({
                   <Box py={8}>
                     <VStack gap={2}>
                       <Spinner size="lg" color="blue.500" />
-                      {/* <Text fontSize="sm" color="gray.600">
-                        Loading schema...
-                      </Text> */}
                     </VStack>
+                  </Box>
+                )}
+
+                {/* Configuration Form - Only show after schema is loaded */}
+                {!isLoadingSchema &&
+                  selectedTable &&
+                  schemaColumns.length > 0 && (
+                    <>
+                      {/* Widget Title */}
+                      <Field.Root>
+                        <Field.Label>Widget Title</Field.Label>
+                        <input
+                          type="text"
+                          value={widgetTitle}
+                          onChange={(e) => setWidgetTitle(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Enter widget title..."
+                        />
+                      </Field.Root>
+
+                      {/* Chart Configuration: Bar, Line, Area */}
+                      {widgetType === "chart" &&
+                        chartType &&
+                        chartType !== "pie" && (
+                          <>
+                            {/* X-Axis Column */}
+                            <Field.Root>
+                              <Field.Label>X-Axis Column</Field.Label>
+                              <Box
+                                borderWidth="1px"
+                                borderRadius="md"
+                                p={3}
+                                maxH="200px"
+                                overflowY="auto"
+                              >
+                                <Stack gap={2}>
+                                  {schemaColumns.map((col) => (
+                                    <label
+                                      key={col.name}
+                                      className="flex items-center gap-2 py-1 cursor-pointer hover:bg-gray-50"
+                                    >
+                                      <input
+                                        type="radio"
+                                        name="xAxisColumn"
+                                        value={col.name}
+                                        checked={xAxisColumn === col.name}
+                                        onChange={(e) =>
+                                          setXAxisColumn(e.target.value)
+                                        }
+                                        className="w-4 h-4"
+                                      />
+                                      <span className="text-sm">
+                                        {col.name}{" "}
+                                        <span className="text-gray-500">
+                                          ({col.type})
+                                        </span>
+                                      </span>
+                                    </label>
+                                  ))}
+                                </Stack>
+                              </Box>
+                              <Field.HelperText>
+                                Choose the column for the horizontal axis
+                              </Field.HelperText>
+                            </Field.Root>
+
+                            {/* Y-Axis Columns - Multi-select */}
+                            <Field.Root>
+                              <Field.Label>Y-Axis Columns</Field.Label>
+                              <Box
+                                borderWidth="1px"
+                                borderRadius="md"
+                                p={3}
+                                maxH="200px"
+                                overflowY="auto"
+                              >
+                                <CheckboxGroup
+                                  value={yAxisColumns}
+                                  onValueChange={setYAxisColumns}
+                                >
+                                  <Stack gap={2}>
+                                    {schemaColumns
+                                      .filter((col) => col.type === "numeric")
+                                      .map((col) => (
+                                        <Checkbox.Root
+                                          key={col.name}
+                                          value={col.name}
+                                        >
+                                          <Checkbox.HiddenInput />
+                                          <Checkbox.Control />
+                                          <Checkbox.Label>
+                                            <span className="text-sm">
+                                              {col.name}{" "}
+                                              <span className="text-gray-500">
+                                                ({col.type})
+                                              </span>
+                                            </span>
+                                          </Checkbox.Label>
+                                        </Checkbox.Root>
+                                      ))}
+                                  </Stack>
+                                </CheckboxGroup>
+                              </Box>
+                              <Field.HelperText>
+                                Select one or more numeric columns to plot
+                              </Field.HelperText>
+                            </Field.Root>
+                          </>
+                        )}
+
+                      {/* Pie Chart Configuration */}
+                      {widgetType === "chart" && chartType === "pie" && (
+                        <>
+                          {/* Label Column */}
+                          <Field.Root>
+                            <Field.Label>Label Column</Field.Label>
+                            <NativeSelect.Root size="md">
+                              <NativeSelect.Field
+                                value={labelColumn}
+                                onChange={(e) => setLabelColumn(e.target.value)}
+                                pl={3}
+                              >
+                                <option value="">Select column...</option>
+                                {schemaColumns.map((col) => (
+                                  <option key={col.name} value={col.name}>
+                                    {col.name} ({col.type})
+                                  </option>
+                                ))}
+                              </NativeSelect.Field>
+                            </NativeSelect.Root>
+                            <Field.HelperText>
+                              Choose the column for pie slice labels
+                            </Field.HelperText>
+                          </Field.Root>
+
+                          {/* Value Column */}
+                          <Field.Root>
+                            <Field.Label>Value Column</Field.Label>
+                            <NativeSelect.Root size="md">
+                              <NativeSelect.Field
+                                value={valueColumn}
+                                onChange={(e) => setValueColumn(e.target.value)}
+                                pl={3}
+                              >
+                                <option value="">Select column...</option>
+                                {schemaColumns
+                                  .filter((col) => col.type === "numeric")
+                                  .map((col) => (
+                                    <option key={col.name} value={col.name}>
+                                      {col.name} ({col.type})
+                                    </option>
+                                  ))}
+                              </NativeSelect.Field>
+                            </NativeSelect.Root>
+                            <Field.HelperText>
+                              Choose the numeric column for pie slice sizes
+                            </Field.HelperText>
+                          </Field.Root>
+                        </>
+                      )}
+
+                      {/* Table Widget Configuration */}
+                      {widgetType === "table" && (
+                        <Field.Root>
+                          <Field.Label>Select Columns to Display</Field.Label>
+                          <Box
+                            borderWidth="1px"
+                            borderRadius="md"
+                            p={3}
+                            maxH="200px"
+                            overflowY="auto"
+                          >
+                            {schemaColumns.map((col) => (
+                              <label
+                                key={col.name}
+                                className="flex items-center gap-2 py-1 cursor-pointer hover:bg-gray-50"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={selectedColumns.includes(col.name)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedColumns([
+                                        ...selectedColumns,
+                                        col.name,
+                                      ]);
+                                    } else {
+                                      setSelectedColumns(
+                                        selectedColumns.filter(
+                                          (c) => c !== col.name,
+                                        ),
+                                      );
+                                    }
+                                  }}
+                                  className="w-4 h-4"
+                                />
+                                <span className="text-sm">
+                                  {col.name}{" "}
+                                  <span className="text-gray-500">
+                                    ({col.type})
+                                  </span>
+                                </span>
+                              </label>
+                            ))}
+                          </Box>
+                          <Field.HelperText>
+                            Select which columns to show in the table
+                          </Field.HelperText>
+                        </Field.Root>
+                      )}
+
+                      {/* Validation Errors */}
+                      {validationErrors.length > 0 && (
+                        <Box
+                          p={3}
+                          bg="red.50"
+                          borderWidth="1px"
+                          borderColor="red.200"
+                          borderRadius="md"
+                        >
+                          <div className="text-sm text-red-700">
+                            <div className="font-semibold mb-2">
+                              Please fix the following errors:
+                            </div>
+                            <ul className="list-disc list-inside space-y-1">
+                              {validationErrors.map((error, idx) => (
+                                <li key={idx}>{error}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </Box>
+                      )}
+
+                      {/* Create Button */}
+                      <button
+                        onClick={handleCreateWidget}
+                        className="w-full px-4 py-3 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 transition-colors"
+                      >
+                        Create Widget
+                      </button>
+                    </>
+                  )}
+
+                {/* Error State */}
+                {schemaError && (
+                  <Box
+                    p={3}
+                    bg="red.50"
+                    borderWidth="1px"
+                    borderColor="red.200"
+                    borderRadius="md"
+                  >
+                    <div className="text-sm text-red-700">{schemaError}</div>
                   </Box>
                 )}
               </VStack>
