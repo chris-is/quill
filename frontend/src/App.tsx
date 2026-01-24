@@ -30,7 +30,7 @@ const AppContent: React.FC = () => {
   };
 
   const createAndExecuteWidget = async (
-    widgetConfig: Omit<Widget, "data">
+    widgetConfig: Omit<Widget, "data">,
   ): Promise<void> => {
     const widget: Widget = { ...widgetConfig, data: [] };
 
@@ -40,7 +40,7 @@ const AppContent: React.FC = () => {
     // Execute query and update with data
     const widgetWithData = await executeWidgetQuery(widget);
     setWidgets((prev) =>
-      prev.map((w) => (w.id === widget.id ? widgetWithData : w))
+      prev.map((w) => (w.id === widget.id ? widgetWithData : w)),
     );
   };
 
@@ -50,7 +50,7 @@ const AppContent: React.FC = () => {
 
     const updatedWidget = await executeWidgetQuery(widget);
     setWidgets((prev) =>
-      prev.map((w) => (w.id === widgetId ? updatedWidget : w))
+      prev.map((w) => (w.id === widgetId ? updatedWidget : w)),
     );
   };
 
@@ -195,7 +195,7 @@ const AppContent: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Navigation */}
       <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mr-auto pr-4 sm:pr-6 lg:pr-8 pl-4">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
               <Database className="w-8 h-8 text-blue-600 mr-3" />
