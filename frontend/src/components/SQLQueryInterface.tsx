@@ -7,8 +7,19 @@ import {
   Database,
   AlertCircle,
   CheckCircle,
+  Save,
 } from "lucide-react";
-import { Drawer, Button, Portal, CloseButton } from "@chakra-ui/react";
+import {
+  Drawer,
+  Button,
+  Portal,
+  CloseButton,
+  Dialog,
+  Field,
+  VStack,
+  Box,
+} from "@chakra-ui/react";
+import { toaster } from "./ui/toaster";
 import { SqlMonacoEditor } from "@sqlrooms/sql-editor";
 
 import { useDuckDB } from "../lib/DuckDBContext";
@@ -30,6 +41,7 @@ interface QueryHistory {
   rowCount?: number;
   executionTime?: number;
   error?: string;
+  saveAsTable?: string;
 }
 
 export const SQLQueryInterface: React.FC = () => {
@@ -39,8 +51,12 @@ export const SQLQueryInterface: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [queryHistory, setQueryHistory] = useState<QueryHistory[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [newTableName, setNewTableName] = useState("");
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const { query, tables, isInitialized } = useDuckDB();
+  const { query, tables, isInitialized, refreshTables } = useDuckDB();
 
   // Sample queries based on available tables
   const getSampleQueries = () => {
@@ -123,7 +139,7 @@ export const SQLQueryInterface: React.FC = () => {
     const csvContent = [
       results.columns.join(","),
       ...results.data.map((row) =>
-        results.columns.map((col) => JSON.stringify(row[col] || "")).join(",")
+        results.columns.map((col) => JSON.stringify(row[col] || "")).join(","),
       ),
     ].join("\n");
 
@@ -134,6 +150,73 @@ export const SQLQueryInterface: React.FC = () => {
     a.download = `query-results-${Date.now()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const validateTableName = (name: string): string | null => {
+    if (!name.trim()) {
+      return "Table name is required";
+    }
+    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name)) {
+      return "Table name must start with a letter or underscore, and contain only letters, numbers, and underscores";
+    }
+    if (tables.includes(name)) {
+      return `Table "${name}" already exists`;
+    }
+    if (name.length > 64) {
+      return "Table name must be 64 characters or less";
+    }
+    return null;
+  };
+
+  const openSaveModal = () => {
+    if (!results || !results.data.length) return;
+    // Generate default table name from timestamp
+    setNewTableName(`query_result_${Date.now()}`);
+    setSaveError(null);
+    setShowSaveModal(true);
+  };
+
+  const saveAsTable = async () => {
+    if (!results) return;
+
+    const validationError = validateTableName(newTableName);
+    if (validationError) {
+      setSaveError(validationError);
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveError(null);
+
+    try {
+      // Use CREATE TABLE AS to save the query results
+      await query(`CREATE TABLE ${newTableName} AS ${results.query}`);
+      await refreshTables();
+
+      setShowSaveModal(false);
+      setNewTableName("");
+
+      // Update history entry to show it was saved as a table
+      setQueryHistory((prev) =>
+        prev.map((entry) =>
+          entry.query === results.query
+            ? { ...entry, saveAsTable: newTableName }
+            : entry,
+        ),
+      );
+
+      // Show success toast
+      toaster.create({
+        title: "Table saved successfully!",
+        description: `"${newTableName}" is now available in your tables. Go to Dashboard to visualize it.`,
+        type: "success",
+        duration: 5000,
+      });
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Failed to save table");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const loadQueryFromHistory = (historyQuery: QueryHistory) => {
@@ -215,6 +298,14 @@ export const SQLQueryInterface: React.FC = () => {
                                       </>
                                     )}
                                   </div>
+                                  {historyItem.saveAsTable && (
+                                    <div className="flex items-center space-x-1 mt-2">
+                                      <Database className="w-3 h-3 text-blue-500" />
+                                      <span className="text-xs text-blue-600">
+                                        Saved as "{historyItem.saveAsTable}"
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -365,13 +456,22 @@ export const SQLQueryInterface: React.FC = () => {
                     </div>
                   </div>
 
-                  <button
-                    onClick={downloadCSV}
-                    className="flex items-center space-x-1 px-3 py-1 bg-gray-100 hover:bg-gray-200 text-sm text-gray-700 rounded transition-colors"
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>Export CSV</span>
-                  </button>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={downloadCSV}
+                      className="flex items-center space-x-1 px-3 py-1 bg-gray-100 hover:bg-gray-200 text-sm text-gray-700 rounded transition-colors"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>Export CSV</span>
+                    </button>
+                    <button
+                      onClick={openSaveModal}
+                      className="flex items-center space-x-1 px-3 py-1 bg-blue-100 hover:bg-blue-200 text-sm text-blue-700 rounded transition-colors"
+                    >
+                      <Save className="w-4 h-4" />
+                      <span>Save as Table</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Results Table */}
@@ -433,6 +533,86 @@ export const SQLQueryInterface: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Save as Table Modal */}
+      <Dialog.Root
+        open={showSaveModal}
+        onOpenChange={(e) => {
+          if (!e.open) {
+            setShowSaveModal(false);
+            setSaveError(null);
+          }
+        }}
+      >
+        <Portal>
+          <Dialog.Backdrop />
+          <Dialog.Positioner>
+            <Dialog.Content>
+              <Dialog.Header>
+                <Dialog.Title p={2}>Save Query Results as Table</Dialog.Title>
+              </Dialog.Header>
+              <Dialog.Body>
+                <VStack gap={4} align="stretch">
+                  {results && (
+                    <Box p={3} bg="gray.50" borderRadius="md" borderWidth="1px">
+                      <div className="text-sm text-gray-600">
+                        <div className="font-medium mb-1">Query Summary</div>
+                        <div>Rows: {results.rowCount}</div>
+                        <div>Columns: {results.columns.join(", ")}</div>
+                      </div>
+                    </Box>
+                  )}
+
+                  <Field.Root invalid={!!saveError}>
+                    <Field.Label px={2}>Table Name</Field.Label>
+                    <Box px={2}>
+                      <input
+                        type="text"
+                        value={newTableName}
+                        onChange={(e) => {
+                          setNewTableName(e.target.value);
+                          setSaveError(null);
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="my_table_name"
+                      />
+                    </Box>
+                    <Field.HelperText px={2}>
+                      Use letters, numbers, and underscores only
+                    </Field.HelperText>
+                    {saveError && (
+                      <Field.ErrorText>{saveError}</Field.ErrorText>
+                    )}
+                  </Field.Root>
+                </VStack>
+              </Dialog.Body>
+              <Dialog.Footer>
+                <Button
+                  p={3}
+                  m={1}
+                  variant="outline"
+                  onClick={() => setShowSaveModal(false)}
+                  disabled={isSaving}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  colorPalette="blue"
+                  p={3}
+                  mr={2}
+                  onClick={saveAsTable}
+                  disabled={isSaving || !newTableName.trim()}
+                >
+                  {isSaving ? "Saving..." : "Save Table"}
+                </Button>
+              </Dialog.Footer>
+              <Dialog.CloseTrigger asChild>
+                <CloseButton size="sm" />
+              </Dialog.CloseTrigger>
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Portal>
+      </Dialog.Root>
     </div>
   );
 };
