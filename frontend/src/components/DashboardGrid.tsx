@@ -120,11 +120,11 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
     return widgets.map((widget, index) => ({
       i: widget.id,
       x: (index * 6) % 12,
-      y: Math.floor(index / 2) * 4,
+      y: Math.floor(index / 2) * 6,
       w: 6,
-      h: 4,
+      h: 6,
       minW: 3,
-      minH: 3,
+      minH: 4,
     }));
   };
 
@@ -134,6 +134,34 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
     sm: generateLayout(widgets),
     xs: generateLayout(widgets),
     xxs: generateLayout(widgets),
+  };
+
+  // Merge saved layouts with defaults - ensures new widgets get proper sizing
+  // while preserving user's custom positions for existing widgets
+  const getMergedLayouts = () => {
+    if (Object.keys(layouts).length === 0) return defaultLayouts;
+
+    const merged: { [key: string]: Layout[] } = {};
+    const breakpoints = ["lg", "md", "sm", "xs", "xxs"] as const;
+
+    for (const bp of breakpoints) {
+      const savedLayout = layouts[bp] || [];
+      const defaultLayout = defaultLayouts[bp];
+
+      // Create a map of saved layouts by widget id
+      const savedMap = new Map(savedLayout.map((l) => [l.i, l]));
+
+      // For each widget, use saved layout if exists, otherwise use default
+      merged[bp] = defaultLayout.map((defaultItem) => {
+        const saved = savedMap.get(defaultItem.i);
+        if (saved) {
+          // Keep saved position but ensure minimum height
+          return { ...saved, minH: 4 };
+        }
+        return defaultItem;
+      });
+    }
+    return merged;
   };
 
   return (
@@ -153,7 +181,7 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
       {/* Grid Layout */}
       <ResponsiveGridLayout
         className="layout"
-        layouts={Object.keys(layouts).length > 0 ? layouts : defaultLayouts}
+        layouts={getMergedLayouts()}
         breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
         cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
         rowHeight={60}
@@ -166,7 +194,7 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
         {widgets.map((widget) => (
           <div
             key={widget.id}
-            className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
+            className="bg-white rounded-lg shadow-sm border border-gray-200 h-full flex flex-col"
           >
             {/* Widget Header */}
             <div className="flex items-center justify-between p-3 border-b border-gray-200 bg-gray-50 react-grid-no-drag">
@@ -211,7 +239,7 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
             </div>
 
             {/* Widget Content */}
-            <div className="p-4 h-full overflow-hidden">
+            <div className="p-4 flex-1 overflow-auto">
               <WidgetContent widget={widget} />
             </div>
           </div>
@@ -239,7 +267,7 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
   );
 };
 
-// Placeholder widget content component
+// Widget content component
 const WidgetContent: React.FC<{ widget: Widget }> = ({ widget }) => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -268,8 +296,8 @@ const WidgetContent: React.FC<{ widget: Widget }> = ({ widget }) => {
     const totalPages = Math.ceil(widget.data.length / rowsPerPage);
 
     return (
-      <>
-        <Table.ScrollArea borderWidth="1px" rounded="md" maxHeight="300px">
+      <div className="flex flex-col h-full">
+        <Table.ScrollArea borderWidth="1px" rounded="md" className="flex-1 min-h-0">
           <Table.Root size="sm" stickyHeader>
             <Table.Header>
               <Table.Row bg="bg.subtle">
@@ -364,7 +392,7 @@ const WidgetContent: React.FC<{ widget: Widget }> = ({ widget }) => {
             </Button>
           </HStack>
         </HStack>
-      </>
+      </div>
     );
   }
 
@@ -386,7 +414,7 @@ const WidgetContent: React.FC<{ widget: Widget }> = ({ widget }) => {
       case "bar":
         return (
           <BarChartWidget
-            data={widget.data}
+            data={widget.data!}
             xKey={xColumn}
             yKeys={yColumns}
             showGrid={true}
@@ -396,7 +424,7 @@ const WidgetContent: React.FC<{ widget: Widget }> = ({ widget }) => {
       case "line":
         return (
           <LineChartWidget
-            data={widget.data}
+            data={widget.data!}
             xKey={xColumn}
             yKeys={yColumns}
             showGrid={true}
@@ -405,16 +433,15 @@ const WidgetContent: React.FC<{ widget: Widget }> = ({ widget }) => {
       case "pie":
         return (
           <PieChartWidget
-            data={widget.data}
+            data={widget.data!}
             xKey={xColumn}
             yKey={yColumns[0]}
-            showGrid={true}
           />
         );
       case "area":
         return (
           <AreaChartWidget
-            data={widget.data}
+            data={widget.data!}
             xKey={xColumn}
             yKeys={yColumns}
             showGrid={true}
