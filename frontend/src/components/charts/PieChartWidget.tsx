@@ -1,27 +1,12 @@
-import React from "react";
-
 import { Chart, useChart } from "@chakra-ui/charts";
-import {
-  Pie,
-  PieChart,
-  Tooltip,
-  Cell,
-  Legend,
-} from "recharts";
-
+import { Pie, PieChart, Tooltip, Cell, Legend } from "recharts";
 import { Box, Text } from "@chakra-ui/react";
-import {
-  chartColorTokens,
-  multiSeriesColors,
-  normalizePieData,
-} from "./chartStyles";
+import { multiSeriesColors, normalizePieData } from "./chartStyles";
 
 interface PieChartWidgetProps {
   data: any[];
   xKey: string;
   yKey: string;
-  color?: string;
-  showGrid?: boolean;
   minHeight?: string;
 }
 
@@ -29,8 +14,6 @@ const PieChartWidget = ({
   data,
   xKey,
   yKey,
-  color = chartColorTokens.primary,
-  showGrid = true,
   minHeight = "300px",
 }: PieChartWidgetProps) => {
   if (!data || data.length === 0) {
@@ -56,8 +39,7 @@ const PieChartWidget = ({
   }));
 
   // Normalize pie data to group small slices into "Other"
-  // This prevents tiny slices from being invisible when there are huge outliers
-  const normalizedData = normalizePieData(numericData, yKey, xKey, 1); // 1% threshold
+  const normalizedData = normalizePieData(numericData, yKey, xKey, 1);
 
   // Initialize chart with useChart hook
   const chart = useChart({
@@ -79,7 +61,7 @@ const PieChartWidget = ({
     <Box>
       {wasNormalized && (
         <Text fontSize="xs" color="gray.500" mb={2} textAlign="center">
-          Small values less than 1% grouped into "Other" for better visibility
+          Small values (&lt;1%) grouped into "Other"
         </Text>
       )}
       <Chart.Root chart={chart} height={minHeight}>
@@ -97,19 +79,17 @@ const PieChartWidget = ({
             nameKey={xKey}
             cx="50%"
             cy="50%"
-            outerRadius={100}
-            innerRadius={60}
+            outerRadius={80}
+            innerRadius={40}
             label
           >
-            {chart.data.map((item, index) => (
+            {chart.data.map((_, index) => (
               <Cell
                 key={`cell-${index}`}
                 fill={multiSeriesColors[index % multiSeriesColors.length]}
               />
             ))}
           </Pie>
-
-          {/* Tooltip */}
           <Tooltip content={<Chart.Tooltip />} />
         </PieChart>
       </Chart.Root>
