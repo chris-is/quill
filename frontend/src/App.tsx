@@ -68,59 +68,6 @@ const AppContent: React.FC = () => {
         columns: [],
       },
     });
-
-    // TEST: add a bar chart widget with multiple series
-    await createAndExecuteWidget({
-      id: `widget-bar-${Date.now()}`,
-      type: "chart",
-      chartType: "bar",
-      title: "Test Bar Chart",
-      tableName: tableName,
-      query: `SELECT * FROM ${tableName} LIMIT 10`,
-      config: {
-        xColumn: "category",
-        yColumns: ["gross_revenue"], // Changed to array - you can add more columns here
-      },
-    });
-
-    await createAndExecuteWidget({
-      id: `widget-line-${Date.now()}`,
-      type: "chart",
-      chartType: "line",
-      title: "Test Line Chart",
-      tableName: tableName,
-      query: `SELECT * FROM ${tableName} LIMIT 10`,
-      config: {
-        xColumn: "category",
-        yColumns: ["gross_revenue"], // Changed to array
-      },
-    });
-
-    await createAndExecuteWidget({
-      id: `widget-pie-${Date.now()}`,
-      type: "chart",
-      chartType: "pie",
-      title: "Test Pie Chart",
-      tableName: tableName,
-      query: `SELECT * FROM ${tableName} LIMIT 10`,
-      config: {
-        xColumn: "category",
-        yColumns: ["gross_revenue"], // Changed to array (pie uses first element)
-      },
-    });
-
-    await createAndExecuteWidget({
-      id: `widget-area-${Date.now()}`,
-      type: "chart",
-      chartType: "area",
-      title: "Test Area Chart",
-      tableName: tableName,
-      query: `SELECT * FROM ${tableName} LIMIT 10`,
-      config: {
-        xColumn: "category",
-        yColumns: ["gross_revenue"], // Changed to array
-      },
-    });
   };
 
   const handleAddWidget = () => {

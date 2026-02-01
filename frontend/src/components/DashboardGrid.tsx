@@ -1,5 +1,10 @@
 import React, { useState, useCallback } from "react";
-import { Responsive, WidthProvider, Layout } from "react-grid-layout";
+import {
+  Responsive,
+  WidthProvider,
+  Layout,
+  ResponsiveProps,
+} from "react-grid-layout";
 import {
   Plus,
   X,
@@ -8,16 +13,6 @@ import {
   PieChart,
   RefreshCw,
 } from "lucide-react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TablePagination,
-  Paper,
-} from "@mui/material";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 import ChartContainer from "./charts/ChartContainer";
@@ -25,8 +20,11 @@ import BarChartWidget from "./charts/BarChartWidget";
 import LineChartWidget from "./charts/LineChartWidget";
 import PieChartWidget from "./charts/PieChartWidget";
 import AreaChartWidget from "./charts/AreaChartWidget";
-
-const ResponsiveGridLayout = WidthProvider(Responsive);
+import { Table, Button, Input, HStack, Text } from "@chakra-ui/react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+const ResponsiveGridLayout = WidthProvider(
+  Responsive,
+) as React.ComponentType<ResponsiveProps>;
 
 export interface Widget {
   id: string;
@@ -85,7 +83,7 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
     (layout: Layout[], allLayouts: { [key: string]: Layout[] }) => {
       setLayouts(allLayouts);
     },
-    []
+    [],
   );
 
   const removeWidget = useCallback(
@@ -93,7 +91,7 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
       const updatedWidgets = widgets.filter((w) => w.id !== widgetId);
       onWidgetUpdate(updatedWidgets);
     },
-    [widgets, onWidgetUpdate]
+    [widgets, onWidgetUpdate],
   );
 
   const refreshWidget = useCallback(
@@ -102,7 +100,7 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
         await onRefreshWidget(widgetId);
       }
     },
-    [onRefreshWidget]
+    [onRefreshWidget],
   );
 
   const getWidgetIcon = (type: string, chartType?: string) => {
@@ -213,7 +211,7 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
             </div>
 
             {/* Widget Content */}
-            <div className="p-4 h-full overflow-auto">
+            <div className="p-4 h-full overflow-hidden">
               <WidgetContent widget={widget} />
             </div>
           </div>
@@ -263,81 +261,110 @@ const WidgetContent: React.FC<{ widget: Widget }> = ({ widget }) => {
     // Calculate paginated data
     const paginatedData = widget.data.slice(
       page * rowsPerPage,
-      page * rowsPerPage + rowsPerPage
+      page * rowsPerPage + rowsPerPage,
     );
 
-    // Pagination event handlers
-    const handleChangePage = (event: unknown, newPage: number) => {
-      setPage(newPage);
-    };
-
-    const handleChangeRowsPerPage = (
-      event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-    ) => {
-      const newValue = parseInt(event.target.value, 10);
-      setRowsPerPage(newValue);
-      setPage(0); // Go back to the first page to avoid confusion
-    };
+    // Calculate total pages for pagination display
+    const totalPages = Math.ceil(widget.data.length / rowsPerPage);
 
     return (
-      <TableContainer
-        component={Paper}
-        sx={{
-          height: "100%",
-          boxShadow: "none",
-          backgroundColor: "transparent",
-        }}
-      >
-        <Table size="small" stickyHeader sx={{ minWidth: 300 }}>
-          <TableHead>
-            <TableRow>
-              {Object.keys(widget.data[0] || {}).map((key) => (
-                <TableCell
-                  key={key}
-                  sx={{
-                    fontWeight: "bold",
-                    color: "text.secondary",
-                    padding: "8px",
-                  }}
-                >
-                  {key}
-                </TableCell>
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {paginatedData.map((row, index) => (
-              <TableRow
-                key={index}
-                sx={{
-                  "&:hover": { backgroundColor: "action.hover" },
-                }}
-              >
-                {Object.values(row).map((value, cellIndex) => (
-                  <TableCell
-                    key={cellIndex}
-                    sx={{
-                      color: "text.primary",
-                      padding: "8px",
-                    }}
+      <>
+        <Table.ScrollArea borderWidth="1px" rounded="md" maxHeight="300px">
+          <Table.Root size="sm" stickyHeader>
+            <Table.Header>
+              <Table.Row bg="bg.subtle">
+                {Object.keys(widget.data[0] || {}).map((key) => (
+                  <Table.ColumnHeader
+                    key={key}
+                    whiteSpace="nowrap"
+                    textAlign="left"
+                    px={4}
                   >
-                    {String(value)}
-                  </TableCell>
+                    {key}
+                  </Table.ColumnHeader>
                 ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        <TablePagination
-          rowsPerPageOptions={[10, 25, 50, 100]}
-          component="div"
-          count={widget.data.length}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={handleChangePage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-        />
-      </TableContainer>
+              </Table.Row>
+            </Table.Header>
+
+            <Table.Body>
+              {paginatedData.map((row, index) => (
+                <Table.Row key={index}>
+                  {Object.values(row).map((value, cellIndex) => (
+                    <Table.Cell
+                      key={cellIndex}
+                      whiteSpace="nowrap"
+                      textAlign="left"
+                      px={4}
+                    >
+                      {String(value)}
+                    </Table.Cell>
+                  ))}
+                </Table.Row>
+              ))}
+            </Table.Body>
+          </Table.Root>
+        </Table.ScrollArea>
+
+        {/* Pagination Controls */}
+        <HStack
+          justify="space-between"
+          py={2}
+          px={2}
+          mt={2}
+          onMouseDown={(e: React.MouseEvent) => e.stopPropagation()}
+          onClick={(e: React.MouseEvent) => e.stopPropagation()}
+        >
+          <HStack gap={2}>
+            <Text fontSize="sm">Rows:</Text>
+            <Input
+              type="number"
+              size="sm"
+              width="70px"
+              min={1}
+              value={rowsPerPage}
+              paddingLeft={3}
+              css={{
+                "&::-webkit-inner-spin-button, &::-webkit-outer-spin-button": {
+                  WebkitAppearance: "none",
+                  margin: 0,
+                },
+                MozAppearance: "textfield",
+              }}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                const value = parseInt(e.target.value, 10);
+                if (value > 0) {
+                  setRowsPerPage(value);
+                  setPage(0);
+                }
+              }}
+            />
+          </HStack>
+
+          <HStack gap={2}>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={page === 0}
+              onClick={() => setPage(page - 1)}
+            >
+              <ChevronLeft size={16} />
+            </Button>
+
+            <Text fontSize="sm">
+              {page + 1} / {totalPages}
+            </Text>
+
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={page >= totalPages - 1}
+              onClick={() => setPage(page + 1)}
+            >
+              <ChevronRight size={16} />
+            </Button>
+          </HStack>
+        </HStack>
+      </>
     );
   }
 
