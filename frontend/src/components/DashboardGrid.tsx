@@ -94,15 +94,6 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
     [widgets, onWidgetUpdate],
   );
 
-  const refreshWidget = useCallback(
-    async (widgetId: string) => {
-      if (onRefreshWidget) {
-        await onRefreshWidget(widgetId);
-      }
-    },
-    [onRefreshWidget],
-  );
-
   const getWidgetIcon = (type: string, chartType?: string) => {
     if (type === "table") return <TableIcon className="w-4 h-4" />;
     if (type === "chart") {
@@ -209,21 +200,6 @@ export const DashboardGrid: React.FC<DashboardGridProps> = ({
                   onClick={(e) => {
                     e.stopPropagation();
                     e.preventDefault();
-                    refreshWidget(widget.id);
-                  }}
-                  onMouseDown={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                  }}
-                  className="text-gray-400 hover:text-blue-500 transition-colors p-1"
-                  title="Refresh data"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
                     removeWidget(widget.id);
                   }}
                   onMouseDown={(e) => {
@@ -297,7 +273,11 @@ const WidgetContent: React.FC<{ widget: Widget }> = ({ widget }) => {
 
     return (
       <div className="flex flex-col h-full">
-        <Table.ScrollArea borderWidth="1px" rounded="md" className="flex-1 min-h-0">
+        <Table.ScrollArea
+          borderWidth="1px"
+          rounded="md"
+          className="flex-1 min-h-0"
+        >
           <Table.Root size="sm" stickyHeader>
             <Table.Header>
               <Table.Row bg="bg.subtle">
@@ -343,7 +323,7 @@ const WidgetContent: React.FC<{ widget: Widget }> = ({ widget }) => {
           onClick={(e: React.MouseEvent) => e.stopPropagation()}
         >
           <HStack gap={2}>
-            <Text fontSize="sm">Rows:</Text>
+            <Text fontSize="sm">Rows per page:</Text>
             <Input
               type="number"
               size="sm"

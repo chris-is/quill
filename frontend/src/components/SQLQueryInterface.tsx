@@ -8,6 +8,8 @@ import {
   AlertCircle,
   CheckCircle,
   Save,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import {
   Drawer,
@@ -18,6 +20,10 @@ import {
   Field,
   VStack,
   Box,
+  Table,
+  HStack,
+  Text,
+  Input,
 } from "@chakra-ui/react";
 import { toaster } from "./ui/toaster";
 import { SqlMonacoEditor } from "@sqlrooms/sql-editor";
@@ -44,6 +50,135 @@ interface QueryHistory {
   saveAsTable?: string;
 }
 
+// Paginated table component using Chakra UI
+const PaginatedResultsTable: React.FC<{ results: QueryResult }> = ({
+  results,
+}) => {
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(100);
+
+  if (results.data.length === 0) {
+    return (
+      <Box flex="1" px={1} py={1} pb={4}>
+        <div className="flex items-center justify-center h-32 text-gray-500">
+          No results returned
+        </div>
+      </Box>
+    );
+  }
+
+  // Calculate paginated data
+  const paginatedData = results.data.slice(
+    page * rowsPerPage,
+    page * rowsPerPage + rowsPerPage,
+  );
+  const totalPages = Math.ceil(results.data.length / rowsPerPage);
+
+  // Format cell value (handle objects/structs)
+  const formatValue = (value: any): string => {
+    if (value === null || value === undefined) return "";
+    if (typeof value === "object") return JSON.stringify(value);
+    return String(value);
+  };
+
+  return (
+    <Box flex="1" px={1} py={1} pb={4} display="flex" flexDirection="column">
+      <Table.ScrollArea
+        borderWidth="1px"
+        rounded="md"
+        flex="1"
+        minHeight="0"
+        maxHeight="calc(100vh - 550px)"
+      >
+        <Table.Root size="sm" stickyHeader>
+          <Table.Header>
+            <Table.Row bg="bg.subtle">
+              {results.columns.map((col) => (
+                <Table.ColumnHeader
+                  key={col}
+                  whiteSpace="nowrap"
+                  textAlign="left"
+                  px={4}
+                >
+                  {col}
+                </Table.ColumnHeader>
+              ))}
+            </Table.Row>
+          </Table.Header>
+
+          <Table.Body>
+            {paginatedData.map((row, rowIndex) => (
+              <Table.Row key={rowIndex}>
+                {results.columns.map((col) => (
+                  <Table.Cell
+                    key={col}
+                    whiteSpace="nowrap"
+                    textAlign="left"
+                    px={4}
+                  >
+                    {formatValue(row[col])}
+                  </Table.Cell>
+                ))}
+              </Table.Row>
+            ))}
+          </Table.Body>
+        </Table.Root>
+      </Table.ScrollArea>
+
+      {/* Pagination Controls */}
+      <HStack justify="space-between" py={2} px={2} mt={2}>
+        <HStack gap={2}>
+          <Text fontSize="sm">Rows per page:</Text>
+          <Input
+            type="number"
+            size="sm"
+            width="70px"
+            min={1}
+            paddingLeft={3}
+            max={1000}
+            value={rowsPerPage}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+              const value = parseInt(e.target.value, 10);
+              if (value > 0 && value <= 1000) {
+                setRowsPerPage(value);
+                setPage(0);
+              }
+            }}
+          />
+        </HStack>
+
+        <HStack gap={2}>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={page === 0}
+            onClick={() => setPage(page - 1)}
+          >
+            <ChevronLeft size={16} />
+          </Button>
+
+          <Text fontSize="sm">
+            {page + 1} / {totalPages}
+          </Text>
+
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={page >= totalPages - 1}
+            onClick={() => setPage(page + 1)}
+          >
+            <ChevronRight size={16} />
+          </Button>
+        </HStack>
+
+        <Text fontSize="sm" color="gray.500">
+          {results.data.length.toLocaleString()} total rows
+        </Text>
+      </HStack>
+    </Box>
+  );
+};
+
 export const SQLQueryInterface: React.FC = () => {
   const [currentQuery, setCurrentQuery] = useState("SELECT * FROM ");
   const [results, setResults] = useState<QueryResult | null>(null);
@@ -66,7 +201,6 @@ export const SQLQueryInterface: React.FC = () => {
       `SELECT * FROM ${firstTable} LIMIT 10`,
       `SELECT COUNT(*) as total_rows FROM ${firstTable}`,
       `DESCRIBE ${firstTable}`,
-      `SELECT * FROM ${firstTable} WHERE ROWNUM <= 5`,
       tables.length > 1 ? `SHOW TABLES` : null,
     ].filter(Boolean);
   };
@@ -343,7 +477,7 @@ export const SQLQueryInterface: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0">
         {/* Query Editor */}
         <div className="flex-1 flex flex-col">
           {/* Sample Queries */}
@@ -425,7 +559,7 @@ export const SQLQueryInterface: React.FC = () => {
           </div>
 
           {/* Results */}
-          <div className="flex-1 bg-white overflow-hidden">
+          <div className="flex-1 bg-white">
             {error && (
               <div className="p-4 bg-red-50 border-b border-red-200">
                 <div className="flex items-start space-x-2">
@@ -475,45 +609,7 @@ export const SQLQueryInterface: React.FC = () => {
                 </div>
 
                 {/* Results Table */}
-                <div className="flex-1 overflow-auto">
-                  {results.data.length > 0 ? (
-                    <table className="w-full text-sm">
-                      <thead className="bg-gray-50 sticky top-0">
-                        <tr>
-                          {results.columns.map((column) => (
-                            <th
-                              key={column}
-                              className="px-4 py-2 text-left font-medium text-gray-900 border-b"
-                            >
-                              {column}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {results.data.map((row, index) => (
-                          <tr
-                            key={index}
-                            className="border-b border-gray-100 hover:bg-gray-50"
-                          >
-                            {results.columns.map((column) => (
-                              <td
-                                key={column}
-                                className="px-4 py-2 text-gray-700"
-                              >
-                                {String(row[column] || "")}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  ) : (
-                    <div className="flex items-center justify-center h-32 text-gray-500">
-                      No results returned
-                    </div>
-                  )}
-                </div>
+                <PaginatedResultsTable results={results} />
               </div>
             )}
 

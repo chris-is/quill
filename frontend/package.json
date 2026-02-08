@@ -22,6 +22,7 @@
     "@sqlrooms/room-store": "^0.24.27",
     "@sqlrooms/sql-editor": "^0.24.27",
     "@sqlrooms/ui": "^0.24.27",
+    "@tanstack/react-virtual": "^3.13.18",
     "lucide-react": "^0.284.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
