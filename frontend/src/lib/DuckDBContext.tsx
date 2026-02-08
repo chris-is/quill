@@ -83,6 +83,27 @@ export const DuckDBProvider: React.FC<DuckDBProviderProps> = ({ children }) => {
       // Get Arrow data as array buffer
       const arrowData = await response.arrayBuffer();
 
+      // Debug: Log response info
+      console.log("Upload response:", {
+        contentType: response.headers.get("Content-Type"),
+        dataSize: arrowData.byteLength,
+        firstBytes: new Uint8Array(arrowData.slice(0, 20)),
+      });
+
+      // Validate we got actual Arrow data (not an error response)
+      if (arrowData.byteLength === 0) {
+        throw new Error("Server returned empty response");
+      }
+
+      // Check if response is JSON error instead of Arrow data
+      const firstBytes = new Uint8Array(arrowData.slice(0, 1));
+      if (firstBytes[0] === 123) {
+        // 123 = '{' - likely a JSON error response
+        const errorText = new TextDecoder().decode(arrowData);
+        console.error("Server returned error:", errorText);
+        throw new Error(`Server error: ${errorText}`);
+      }
+
       // Create table name from filename (remove extension and sanitize)
       const tableName = file.name
         .replace(/\.[^/.]+$/, "")
