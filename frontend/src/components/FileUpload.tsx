@@ -72,11 +72,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
       setUploadStatus("uploading");
       setSelectedFile(null); // Clear selected file
 
-      await loadData(file, csvSeparator, csvHasHeader);
+      const tableName = await loadData(file, csvSeparator, csvHasHeader);
 
-      const tableName = file.name
-        .replace(/\.[^/.]+$/, "")
-        .replace(/[^a-zA-Z0-9_]/g, "_");
       setUploadStatus("success");
       onDataLoaded?.(tableName);
 

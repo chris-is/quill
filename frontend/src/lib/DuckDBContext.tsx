@@ -17,7 +17,7 @@ interface DuckDBContextType {
     file: File,
     separator?: string,
     hasHeader?: boolean
-  ) => Promise<void>;
+  ) => Promise<string>;
   query: (sql: string) => Promise<any[]>;
   refreshTables: () => Promise<void>;
 }
@@ -66,7 +66,7 @@ export const DuckDBProvider: React.FC<DuckDBProviderProps> = ({ children }) => {
     file: File,
     separator?: string,
     hasHeader?: boolean
-  ): Promise<void> => {
+  ): Promise<string> => {
     if (!service) {
       throw new Error("DuckDB service not initialized");
     }
@@ -126,15 +126,32 @@ export const DuckDBProvider: React.FC<DuckDBProviderProps> = ({ children }) => {
       }
 
       // Create table name from filename (remove extension and sanitize)
-      const tableName = file.name
+      let tableName = file.name
         .replace(/\.[^/.]+$/, "")
         .replace(/[^a-zA-Z0-9_]/g, "_");
+
+      // Check if table name already exists, and append "_copy" if needed
+      if (tables.includes(tableName)) {
+        tableName = tableName + "_copy";
+
+        // If tableName_copy also exists, keep appending _copy until we find a unique name
+        let copyCount = 2;
+        while (tables.includes(tableName)) {
+          tableName = file.name
+            .replace(/\.[^/.]+$/, "")
+            .replace(/[^a-zA-Z0-9_]/g, "_") + `_copy_${copyCount}`;
+          copyCount++;
+        }
+      }
 
       // Insert data into DuckDB
       await service.createTableFromArrow(tableName, new Uint8Array(arrowData));
 
       // Refresh tables list
       await refreshTables();
+
+      // Return the actual table name (which might have _copy suffix)
+      return tableName;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load data");
       console.error("Data loading error:", err);

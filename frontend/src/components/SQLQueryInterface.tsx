@@ -1,4 +1,10 @@
-import React, { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import React, {
+  useState,
+  useMemo,
+  useCallback,
+  useRef,
+  useEffect,
+} from "react";
 import {
   Play,
   Download,
@@ -51,143 +57,147 @@ interface QueryHistory {
 }
 
 // Paginated table component using Chakra UI (memoized to prevent re-renders when parent state changes)
-const PaginatedResultsTable = React.memo<{ results: QueryResult }>(({
-  results,
-}) => {
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+const PaginatedResultsTable = React.memo<{ results: QueryResult }>(
+  ({ results }) => {
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  // Reset pagination when new results come in
-  useEffect(() => {
-    setPage(0);
-    setRowsPerPage(10);
-  }, [results]);
+    // Reset pagination when new results come in
+    useEffect(() => {
+      setPage(0);
+      setRowsPerPage(10);
+    }, [results]);
 
-  if (results.data.length === 0) {
-    return (
-      <Box flex="1" px={1} py={1} pb={4}>
-        <div className="flex items-center justify-center h-32 text-gray-500">
-          No results returned
-        </div>
-      </Box>
+    if (results.data.length === 0) {
+      return (
+        <Box flex="1" px={1} py={1} pb={4}>
+          <div className="flex items-center justify-center h-32 text-gray-500">
+            No results returned
+          </div>
+        </Box>
+      );
+    }
+
+    // Calculate paginated data (memoized to avoid recalculation on unrelated re-renders)
+    const paginatedData = useMemo(
+      () =>
+        results.data.slice(
+          page * rowsPerPage,
+          page * rowsPerPage + rowsPerPage,
+        ),
+      [results.data, page, rowsPerPage],
     );
-  }
 
-  // Calculate paginated data (memoized to avoid recalculation on unrelated re-renders)
-  const paginatedData = useMemo(
-    () => results.data.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage),
-    [results.data, page, rowsPerPage]
-  );
+    const totalPages = useMemo(
+      () => Math.ceil(results.data.length / rowsPerPage),
+      [results.data.length, rowsPerPage],
+    );
 
-  const totalPages = useMemo(
-    () => Math.ceil(results.data.length / rowsPerPage),
-    [results.data.length, rowsPerPage]
-  );
+    // Format cell value (memoized callback for stable reference)
+    const formatValue = useCallback((value: any): string => {
+      if (value === null || value === undefined) return "";
+      if (typeof value === "object") return JSON.stringify(value);
+      return String(value);
+    }, []);
 
-  // Format cell value (memoized callback for stable reference)
-  const formatValue = useCallback((value: any): string => {
-    if (value === null || value === undefined) return "";
-    if (typeof value === "object") return JSON.stringify(value);
-    return String(value);
-  }, []);
-
-  return (
-    <Box flex="1" px={1} py={1} pb={4} display="flex" flexDirection="column">
-      <Table.ScrollArea
-        borderWidth="1px"
-        rounded="md"
-        flex="1"
-        minHeight="0"
-        maxHeight="calc(100vh - 550px)"
-      >
-        <Table.Root size="sm" stickyHeader>
-          <Table.Header>
-            <Table.Row bg="bg.subtle">
-              {results.columns.map((col) => (
-                <Table.ColumnHeader
-                  key={col}
-                  whiteSpace="nowrap"
-                  textAlign="left"
-                  px={4}
-                >
-                  {col}
-                </Table.ColumnHeader>
-              ))}
-            </Table.Row>
-          </Table.Header>
-
-          <Table.Body>
-            {paginatedData.map((row, rowIndex) => (
-              <Table.Row key={rowIndex}>
+    return (
+      <Box flex="1" px={1} py={1} pb={4} display="flex" flexDirection="column">
+        <Table.ScrollArea
+          borderWidth="1px"
+          rounded="md"
+          flex="1"
+          minHeight="0"
+          maxHeight="calc(100vh - 550px)"
+        >
+          <Table.Root size="sm" stickyHeader>
+            <Table.Header>
+              <Table.Row bg="bg.subtle">
                 {results.columns.map((col) => (
-                  <Table.Cell
+                  <Table.ColumnHeader
                     key={col}
                     whiteSpace="nowrap"
                     textAlign="left"
                     px={4}
                   >
-                    {formatValue(row[col])}
-                  </Table.Cell>
+                    {col}
+                  </Table.ColumnHeader>
                 ))}
               </Table.Row>
-            ))}
-          </Table.Body>
-        </Table.Root>
-      </Table.ScrollArea>
+            </Table.Header>
 
-      {/* Pagination Controls */}
-      <HStack justify="space-between" py={2} px={2} mt={2}>
-        <HStack gap={2}>
-          <Text fontSize="sm">Rows per page:</Text>
-          <Input
-            type="number"
-            size="sm"
-            width="70px"
-            min={1}
-            paddingLeft={3}
-            max={1000}
-            value={rowsPerPage}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-              const value = parseInt(e.target.value, 10);
-              if (value > 0 && value <= 1000) {
-                setRowsPerPage(value);
-                setPage(0);
-              }
-            }}
-          />
-        </HStack>
+            <Table.Body>
+              {paginatedData.map((row, rowIndex) => (
+                <Table.Row key={rowIndex}>
+                  {results.columns.map((col) => (
+                    <Table.Cell
+                      key={col}
+                      whiteSpace="nowrap"
+                      textAlign="left"
+                      px={4}
+                    >
+                      {formatValue(row[col])}
+                    </Table.Cell>
+                  ))}
+                </Table.Row>
+              ))}
+            </Table.Body>
+          </Table.Root>
+        </Table.ScrollArea>
 
-        <HStack gap={2}>
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={page === 0}
-            onClick={() => setPage(page - 1)}
-          >
-            <ChevronLeft size={16} />
-          </Button>
+        {/* Pagination Controls */}
+        <HStack justify="space-between" py={2} px={2} mt={2}>
+          <HStack gap={2}>
+            <Text fontSize="sm">Rows per page:</Text>
+            <Input
+              type="number"
+              size="sm"
+              width="70px"
+              min={1}
+              paddingLeft={3}
+              max={1000}
+              value={rowsPerPage}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                const value = parseInt(e.target.value, 10);
+                if (value > 0 && value <= 1000) {
+                  setRowsPerPage(value);
+                  setPage(0);
+                }
+              }}
+            />
+          </HStack>
 
-          <Text fontSize="sm">
-            {page + 1} / {totalPages}
+          <HStack gap={2}>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={page === 0}
+              onClick={() => setPage(page - 1)}
+            >
+              <ChevronLeft size={16} />
+            </Button>
+
+            <Text fontSize="sm">
+              {page + 1} / {totalPages}
+            </Text>
+
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={page >= totalPages - 1}
+              onClick={() => setPage(page + 1)}
+            >
+              <ChevronRight size={16} />
+            </Button>
+          </HStack>
+
+          <Text fontSize="sm" color="gray.500">
+            {results.data.length.toLocaleString()} total rows
           </Text>
-
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={page >= totalPages - 1}
-            onClick={() => setPage(page + 1)}
-          >
-            <ChevronRight size={16} />
-          </Button>
         </HStack>
-
-        <Text fontSize="sm" color="gray.500">
-          {results.data.length.toLocaleString()} total rows
-        </Text>
-      </HStack>
-    </Box>
-  );
-});
+      </Box>
+    );
+  },
+);
 
 export const SQLQueryInterface: React.FC = () => {
   const [currentQuery, setCurrentQuery] = useState("SELECT * FROM ");
@@ -308,7 +318,7 @@ export const SQLQueryInterface: React.FC = () => {
       return "Table name must start with a letter or underscore, and contain only letters, numbers, and underscores";
     }
     if (tables.includes(name)) {
-      return `Table "${name}" already exists`;
+      return "Table name already exists";
     }
     if (name.length > 64) {
       return "Table name must be 64 characters or less";
@@ -326,8 +336,12 @@ export const SQLQueryInterface: React.FC = () => {
 
   const saveAsTable = async () => {
     if (!results) return;
+    var editedTableName = newTableName;
+    const validationError = validateTableName(editedTableName);
 
-    const validationError = validateTableName(newTableName);
+    if (validationError == "Table name already exists") {
+      editedTableName = editedTableName + "_copy";
+    }
     if (validationError) {
       setSaveError(validationError);
       return;
@@ -338,7 +352,7 @@ export const SQLQueryInterface: React.FC = () => {
 
     try {
       // Use CREATE TABLE AS to save the query results
-      await query(`CREATE TABLE ${newTableName} AS ${results.query}`);
+      await query(`CREATE TABLE ${editedTableName} AS ${results.query}`);
       await refreshTables();
 
       setShowSaveModal(false);
@@ -348,7 +362,7 @@ export const SQLQueryInterface: React.FC = () => {
       setQueryHistory((prev) =>
         prev.map((entry) =>
           entry.query === results.query
-            ? { ...entry, saveAsTable: newTableName }
+            ? { ...entry, saveAsTable: editedTableName }
             : entry,
         ),
       );
@@ -356,7 +370,7 @@ export const SQLQueryInterface: React.FC = () => {
       // Show success toast
       toaster.create({
         title: "Table saved successfully!",
-        description: `"${newTableName}" is now available in your tables. Go to Dashboard to visualize it.`,
+        description: `"${editedTableName}" is now available in your tables. Go to Dashboard to visualize it.`,
         type: "success",
         duration: 5000,
       });
@@ -548,7 +562,8 @@ export const SQLQueryInterface: React.FC = () => {
 
                       // If text is selected, execute only the selection
                       if (selection && !selection.isEmpty()) {
-                        queryToExecute = ed.getModel()?.getValueInRange(selection) ?? "";
+                        queryToExecute =
+                          ed.getModel()?.getValueInRange(selection) ?? "";
                       } else {
                         // No selection - execute entire editor content
                         queryToExecute = ed.getValue();
