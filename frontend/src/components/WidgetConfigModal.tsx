@@ -7,9 +7,7 @@ import {
   Field,
   NativeSelect,
   Spinner,
-  CheckboxGroup,
   Stack,
-  Checkbox,
 } from "@chakra-ui/react";
 import {
   BarChart3,
@@ -582,32 +580,40 @@ const WidgetConfigModal: React.FC<WidgetConfigModalProps> = ({
                                 maxH="200px"
                                 overflowY="auto"
                               >
-                                <CheckboxGroup
-                                  value={yAxisColumns}
-                                  onValueChange={setYAxisColumns}
-                                >
-                                  <Stack gap={2}>
-                                    {schemaColumns
-                                      .filter((col) => col.type === "numeric")
-                                      .map((col) => (
-                                        <Checkbox.Root
-                                          key={col.name}
-                                          value={col.name}
-                                        >
-                                          <Checkbox.HiddenInput />
-                                          <Checkbox.Control />
-                                          <Checkbox.Label>
-                                            <span className="text-sm">
-                                              {col.name}{" "}
-                                              <span className="text-gray-500">
-                                                ({col.type})
-                                              </span>
-                                            </span>
-                                          </Checkbox.Label>
-                                        </Checkbox.Root>
-                                      ))}
-                                  </Stack>
-                                </CheckboxGroup>
+                                {schemaColumns
+                                  .filter((col) => col.type === "numeric")
+                                  .map((col) => (
+                                    <label
+                                      key={col.name}
+                                      className="flex items-center gap-2 py-1 cursor-pointer hover:bg-gray-50"
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={yAxisColumns.includes(col.name)}
+                                        onChange={(e) => {
+                                          if (e.target.checked) {
+                                            setYAxisColumns([
+                                              ...yAxisColumns,
+                                              col.name,
+                                            ]);
+                                          } else {
+                                            setYAxisColumns(
+                                              yAxisColumns.filter(
+                                                (c) => c !== col.name,
+                                              ),
+                                            );
+                                          }
+                                        }}
+                                        className="w-4 h-4"
+                                      />
+                                      <span className="text-sm">
+                                        {col.name}{" "}
+                                        <span className="text-gray-500">
+                                          ({col.type})
+                                        </span>
+                                      </span>
+                                    </label>
+                                  ))}
                               </Box>
                               <Field.HelperText>
                                 Select one or more numeric columns to plot
