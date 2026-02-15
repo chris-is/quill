@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from "react";
 import { Upload, FileText, Database } from "lucide-react";
 import { useDuckDB } from "../lib/DuckDBContext";
+import { Box, Stack, NativeSelect, Checkbox, Button } from "@chakra-ui/react";
 
 interface FileUploadProps {
   onDataLoaded?: (tableName: string) => void;
@@ -11,6 +12,9 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
   const [uploadStatus, setUploadStatus] = useState<
     "idle" | "uploading" | "success" | "error"
   >("idle");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [separator, setSeparator] = useState<string>("comma");
+  const [hasHeader, setHasHeader] = useState<boolean>(true);
   const { loadData, isLoading } = useDuckDB();
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -23,30 +27,52 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
     setIsDragOver(false);
   }, []);
 
-  const handleDrop = useCallback(async (e: React.DragEvent) => {
+  const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
 
     const files = Array.from(e.dataTransfer.files);
     if (files.length > 0) {
-      await handleFileUpload(files[0]);
+      handleFileSelection(files[0]);
     }
   }, []);
 
   const handleFileSelect = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
+    (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = e.target.files;
       if (files && files.length > 0) {
-        await handleFileUpload(files[0]);
+        handleFileSelection(files[0]);
       }
+      // Reset input value to allow selecting the same file again
+      e.target.value = "";
     },
     [],
   );
 
-  const handleFileUpload = async (file: File) => {
+  const handleFileSelection = (file: File) => {
+    const isCSV = file.name.toLowerCase().endsWith(".csv");
+
+    if (isCSV) {
+      // For CSV files, store and show settings
+      setSelectedFile(file);
+      setSeparator("comma");
+      setHasHeader(true);
+    } else {
+      // For non-CSV files, upload immediately
+      handleFileUpload(file);
+    }
+  };
+
+  const handleFileUpload = async (
+    file: File,
+    csvSeparator?: string,
+    csvHasHeader?: boolean,
+  ) => {
     try {
       setUploadStatus("uploading");
-      await loadData(file);
+      setSelectedFile(null); // Clear selected file
+
+      await loadData(file, csvSeparator, csvHasHeader);
 
       const tableName = file.name
         .replace(/\.[^/.]+$/, "")
@@ -61,6 +87,18 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
       setUploadStatus("error");
       setTimeout(() => setUploadStatus("idle"), 3000);
     }
+  };
+
+  const handleUploadClick = () => {
+    if (selectedFile) {
+      handleFileUpload(selectedFile, separator, hasHeader);
+    }
+  };
+
+  const handleCancelClick = () => {
+    setSelectedFile(null);
+    setSeparator("comma");
+    setHasHeader(true);
   };
 
   const getStatusColor = () => {
@@ -159,6 +197,73 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onDataLoaded }) => {
       <div className="mt-4 text-xs text-gray-500 text-center">
         Files are processed locally in your browser using DuckDB WebAssembly
       </div>
+
+      {/* CSV Settings Panel */}
+      {selectedFile && (
+        <Box
+          mt={4}
+          p={4}
+          borderWidth="1px"
+          borderRadius="lg"
+          borderColor="blue.300"
+          bg="blue.50"
+        >
+          <Stack gap={4}>
+            <Box>
+              <p className="text-sm font-medium text-gray-700 mb-2">
+                CSV Configuration for: {selectedFile.name}
+              </p>
+            </Box>
+
+            <Box>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Separator
+              </label>
+              <NativeSelect.Root size="sm" disabled={isLoading}>
+                <NativeSelect.Field
+                  value={separator}
+                  onChange={(e) => setSeparator(e.currentTarget.value)}
+                >
+                  <option value="comma">Comma (,)</option>
+                  <option value="semicolon">Semicolon (;)</option>
+                  <option value="tab">Tab</option>
+                  <option value="pipe">Pipe (|)</option>
+                </NativeSelect.Field>
+                <NativeSelect.Indicator />
+              </NativeSelect.Root>
+            </Box>
+
+            <Checkbox.Root
+              checked={hasHeader}
+              onCheckedChange={(e) => setHasHeader(!!e.checked)}
+              disabled={isLoading}
+            >
+              <Checkbox.HiddenInput />
+              <Checkbox.Control />
+              <Checkbox.Label>First row is header</Checkbox.Label>
+            </Checkbox.Root>
+
+            <Box display="flex" gap={2}>
+              <Button
+                colorPalette="blue"
+                onClick={handleUploadClick}
+                disabled={isLoading}
+                flex={1}
+              >
+                Upload File
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleCancelClick}
+                px={2}
+                disabled={isLoading}
+              >
+                Cancel
+              </Button>
+            </Box>
+          </Stack>
+        </Box>
+      )}
     </div>
   );
 };

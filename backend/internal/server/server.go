@@ -69,6 +69,11 @@ func (s *Server) handleFileUpload(c *gin.Context) {
 	}
 	defer file.Close()
 
+	// Read CSV configuration from query parameters
+	separator := c.DefaultQuery("separator", "comma")
+	hasHeaderStr := c.DefaultQuery("hasHeader", "true")
+	hasHeader := hasHeaderStr == "true"
+
 	// Read file content
 	content, err := io.ReadAll(file)
 	if err != nil {
@@ -81,17 +86,17 @@ func (s *Server) handleFileUpload(c *gin.Context) {
 	c.Header("Access-Control-Expose-Headers", "Content-Type")
 
 	// Convert to Arrow format based on file type
-	if err := s.convertToArrowStream(c.Request.Context(), c.Writer, content, header.Filename); err != nil {
+	if err := s.convertToArrowStream(c.Request.Context(), c.Writer, content, header.Filename, separator, hasHeader); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to convert to Arrow: %v",
 			err)})
 		return
 	}
 }
 
-func (s *Server) convertToArrow(content []byte, filename string) ([]byte, error) {
+func (s *Server) convertToArrow(content []byte, filename string, separator string, hasHeader bool) ([]byte, error) {
 	// Determine file type by extension
 	if strings.HasSuffix(strings.ToLower(filename), ".csv") {
-		return s.convertCSVToArrow(content)
+		return s.convertCSVToArrow(content, separator, hasHeader)
 	} else if strings.HasSuffix(strings.ToLower(filename), ".json") {
 		return s.convertJSONToArrow(content)
 	}
@@ -99,12 +104,12 @@ func (s *Server) convertToArrow(content []byte, filename string) ([]byte, error)
 	return nil, fmt.Errorf("unsupported file type: %s", filename)
 }
 
-func (s *Server) convertToArrowStream(ctx context.Context, out io.Writer, content []byte, filename string) error {
+func (s *Server) convertToArrowStream(ctx context.Context, out io.Writer, content []byte, filename string, separator string, hasHeader bool) error {
 	if strings.HasSuffix(strings.ToLower(filename), ".parquet") {
 		return s.streamParquetToArrowIPC(ctx, out, content)
 	}
 	// TODO CIXX: For CSV/JSON keep returning []byte for now. Change to stream later.
-	arrowData, err := s.convertToArrow(content, filename)
+	arrowData, err := s.convertToArrow(content, filename, separator, hasHeader)
 	if err != nil {
 		return err
 	}
@@ -204,8 +209,24 @@ func (s *Server) streamParquetToArrowIPC(ctx context.Context, out io.Writer, par
 	return nil
 }
 
-func (s *Server) convertCSVToArrow(content []byte) ([]byte, error) {
+func (s *Server) convertCSVToArrow(content []byte, separator string, hasHeader bool) ([]byte, error) {
 	reader := csv.NewReader(bytes.NewReader(content))
+
+	// Configure separator
+	separatorRune := ','
+	switch separator {
+	case "semicolon":
+		separatorRune = ';'
+	case "tab":
+		separatorRune = '\t'
+	case "pipe":
+		separatorRune = '|'
+	case "comma", "":
+		separatorRune = ','
+	default:
+		return nil, fmt.Errorf("unsupported separator: %s", separator)
+	}
+	reader.Comma = separatorRune
 
 	// Read all records
 	records, err := reader.ReadAll()
@@ -217,9 +238,22 @@ func (s *Server) convertCSVToArrow(content []byte) ([]byte, error) {
 		return nil, fmt.Errorf("empty CSV file")
 	}
 
-	// Use first row as headers
-	headers := records[0]
-	dataRows := records[1:]
+	// Determine headers and data rows based on hasHeader setting
+	var headers []string
+	var dataRows [][]string
+
+	if hasHeader {
+		headers = records[0]
+		dataRows = records[1:]
+	} else {
+		// Generate column names: column_1, column_2, etc.
+		numCols := len(records[0])
+		headers = make([]string, numCols)
+		for i := 0; i < numCols; i++ {
+			headers[i] = fmt.Sprintf("column_%d", i+1)
+		}
+		dataRows = records
+	}
 
 	// Build Arrow schema - assume all columns are strings for simplicity
 	fields := make([]arrow.Field, len(headers))

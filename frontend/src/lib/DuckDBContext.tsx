@@ -13,7 +13,11 @@ interface DuckDBContextType {
   error: string | null;
   service: DuckDBService | null;
   tables: string[];
-  loadData: (file: File) => Promise<void>;
+  loadData: (
+    file: File,
+    separator?: string,
+    hasHeader?: boolean
+  ) => Promise<void>;
   query: (sql: string) => Promise<any[]>;
   refreshTables: () => Promise<void>;
 }
@@ -58,7 +62,11 @@ export const DuckDBProvider: React.FC<DuckDBProviderProps> = ({ children }) => {
     }
   };
 
-  const loadData = async (file: File): Promise<void> => {
+  const loadData = async (
+    file: File,
+    separator?: string,
+    hasHeader?: boolean
+  ): Promise<void> => {
     if (!service) {
       throw new Error("DuckDB service not initialized");
     }
@@ -71,7 +79,20 @@ export const DuckDBProvider: React.FC<DuckDBProviderProps> = ({ children }) => {
       const formData = new FormData();
       formData.append("file", file);
 
-      const response = await fetch("http://localhost:8080/upload", {
+      // Build query string for CSV configuration
+      const queryParams = new URLSearchParams();
+      if (separator) {
+        queryParams.append("separator", separator);
+      }
+      if (hasHeader !== undefined) {
+        queryParams.append("hasHeader", hasHeader.toString());
+      }
+      const queryString = queryParams.toString();
+      const url = queryString
+        ? `http://localhost:8080/upload?${queryString}`
+        : "http://localhost:8080/upload";
+
+      const response = await fetch(url, {
         method: "POST",
         body: formData,
       });
