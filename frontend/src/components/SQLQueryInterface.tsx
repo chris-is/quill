@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
   Play,
   Download,
@@ -50,12 +50,18 @@ interface QueryHistory {
   saveAsTable?: string;
 }
 
-// Paginated table component using Chakra UI
-const PaginatedResultsTable: React.FC<{ results: QueryResult }> = ({
+// Paginated table component using Chakra UI (memoized to prevent re-renders when parent state changes)
+const PaginatedResultsTable = React.memo<{ results: QueryResult }>(({
   results,
 }) => {
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(100);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  // Reset pagination when new results come in
+  useEffect(() => {
+    setPage(0);
+    setRowsPerPage(10);
+  }, [results]);
 
   if (results.data.length === 0) {
     return (
@@ -67,19 +73,23 @@ const PaginatedResultsTable: React.FC<{ results: QueryResult }> = ({
     );
   }
 
-  // Calculate paginated data
-  const paginatedData = results.data.slice(
-    page * rowsPerPage,
-    page * rowsPerPage + rowsPerPage,
+  // Calculate paginated data (memoized to avoid recalculation on unrelated re-renders)
+  const paginatedData = useMemo(
+    () => results.data.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage),
+    [results.data, page, rowsPerPage]
   );
-  const totalPages = Math.ceil(results.data.length / rowsPerPage);
 
-  // Format cell value (handle objects/structs)
-  const formatValue = (value: any): string => {
+  const totalPages = useMemo(
+    () => Math.ceil(results.data.length / rowsPerPage),
+    [results.data.length, rowsPerPage]
+  );
+
+  // Format cell value (memoized callback for stable reference)
+  const formatValue = useCallback((value: any): string => {
     if (value === null || value === undefined) return "";
     if (typeof value === "object") return JSON.stringify(value);
     return String(value);
-  };
+  }, []);
 
   return (
     <Box flex="1" px={1} py={1} pb={4} display="flex" flexDirection="column">
@@ -177,7 +187,7 @@ const PaginatedResultsTable: React.FC<{ results: QueryResult }> = ({
       </HStack>
     </Box>
   );
-};
+});
 
 export const SQLQueryInterface: React.FC = () => {
   const [currentQuery, setCurrentQuery] = useState("SELECT * FROM ");
@@ -262,6 +272,10 @@ export const SQLQueryInterface: React.FC = () => {
       setIsExecuting(false);
     }
   };
+
+  // Ref to hold the latest executeQuery function (avoids stale closure in Monaco onMount)
+  const executeQueryRef = useRef(executeQuery);
+  executeQueryRef.current = executeQuery;
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -529,9 +543,19 @@ export const SQLQueryInterface: React.FC = () => {
                     label: "Execute Query",
                     keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter],
                     run: (ed) => {
-                      // Get the current editor value to avoid stale closure
-                      const currentEditorValue = ed.getValue();
-                      executeQuery(currentEditorValue);
+                      const selection = ed.getSelection();
+                      let queryToExecute: string;
+
+                      // If text is selected, execute only the selection
+                      if (selection && !selection.isEmpty()) {
+                        queryToExecute = ed.getModel()?.getValueInRange(selection) ?? "";
+                      } else {
+                        // No selection - execute entire editor content
+                        queryToExecute = ed.getValue();
+                      }
+
+                      // Use ref to avoid stale closure (onMount only fires once)
+                      executeQueryRef.current(queryToExecute);
                     },
                   });
                 }}
