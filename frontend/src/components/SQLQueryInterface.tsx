@@ -291,15 +291,43 @@ export const SQLQueryInterface: React.FC = () => {
     navigator.clipboard.writeText(text);
   };
 
+  // Helper to escape CSV values per RFC 4180
+  const escapeCsvValue = (value: string): string => {
+    if (value.includes(",") || value.includes('"') || value.includes("\n") || value.includes("\r")) {
+      return `"${value.replace(/"/g, '""')}"`;
+    }
+    return value;
+  };
+
+  const formatCellValue = (value: any): string => {
+    if (value == null) return "";
+    if (value instanceof Date) {
+      return isNaN(value.getTime()) ? "" : value.toISOString();
+    }
+    if (typeof value === "bigint") return String(value);
+    if (typeof value === "number") return String(value);
+    if (typeof value === "boolean") return String(value);
+    if (typeof value === "string") return escapeCsvValue(value);
+    if (Array.isArray(value) || (typeof value === "object" && value !== null)) {
+      const stringified = JSON.stringify(value, (_key, v) =>
+        typeof v === "bigint" ? String(v) : v,
+      );
+      return escapeCsvValue(stringified);
+    }
+    return "";
+  };
+
   const downloadCSV = () => {
     if (!results || !results.data.length) return;
 
-    const csvContent = [
-      results.columns.join(","),
-      ...results.data.map((row) =>
-        results.columns.map((col) => JSON.stringify(row[col] || "")).join(","),
-      ),
-    ].join("\n");
+    // Escape column headers too
+    const headers = results.columns.map(escapeCsvValue).join(",");
+
+    const rows = results.data.map((row) =>
+      results.columns.map((col) => formatCellValue(row[col])).join(","),
+    );
+
+    const csvContent = [headers, ...rows].join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
